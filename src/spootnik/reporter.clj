@@ -146,7 +146,7 @@
     (map name v)
     (name v)))
 
-(defrecord UriReporter [rclient raven reporters registry sentry metrics riemann]
+(defrecord Reporter [rclient raven reporters registry sentry metrics riemann]
   c/Lifecycle
   (start [this]
     (let [rclient    (when riemann (riemann-client riemann))
