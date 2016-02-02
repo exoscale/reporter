@@ -238,3 +238,9 @@
 (defmacro with-time!
   [[reporter alias] & body]
   `(time-fn! ~reporter ~alias (fn [] (do ~@body))))
+
+(defn make-reporter
+  ([]
+   (map->Reporter nil))
+  ([reporter]
+   (map->Reporter reporter)))
