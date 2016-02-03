@@ -171,12 +171,13 @@
     (assoc this :raven nil :reporters nil :registry nil :rclient nil))
   MetricHolder
   (instrument! [this prefix]
-    (doseq [[f title] [[jvm/register-jvm-attribute-gauge-set ["jvm" "attribute"]]
-                       [jvm/register-memory-usage-gauge-set ["jvm" "memory"]]
-                       [jvm/register-file-descriptor-ratio-gauge-set ["jvm" "file"]]
-                       [jvm/register-garbage-collector-metric-set ["jvm" "gc"]]
-                       [jvm/register-thread-state-gauge-set ["jvm" "thread"]]]]
-      (f registry (mapv name (concat prefix title)))))
+    (when registry
+      (doseq [[f title] [[jvm/register-jvm-attribute-gauge-set ["jvm" "attribute"]]
+                         [jvm/register-memory-usage-gauge-set ["jvm" "memory"]]
+                         [jvm/register-file-descriptor-ratio-gauge-set ["jvm" "file"]]
+                         [jvm/register-garbage-collector-metric-set ["jvm" "gc"]]
+                         [jvm/register-thread-state-gauge-set ["jvm" "thread"]]]]
+        (f registry (mapv name (concat prefix title))))))
   (build! [this type alias f]
     (when registry
       (assert (fn? f))
