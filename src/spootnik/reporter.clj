@@ -211,8 +211,9 @@
     (when registry
       (hst/update! (hst/histogram registry (->alias alias)) v)))
   (time-fn! [this alias f]
-    (when registry
-      (tmr/time-fn! (tmr/timer registry (->alias alias)) f)))
+    (if registry
+      (tmr/time-fn! (tmr/timer registry (->alias alias)) f)
+      (f)))
   (start! [this alias]
     (when registry
       (tmr/start (tmr/timer registry (->alias alias)))))
