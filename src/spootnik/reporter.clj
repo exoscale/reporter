@@ -182,7 +182,8 @@
     (when registry
       (assert (fn? f))
       (case type
-        :gauge (gge/gauge registry (->alias alias))
+        :gauge (or (gge/gauge registry (->alias alias))
+                   (gge/gauge-fn registry (->alias alias) f))
         (throw (ex-info "invalid metric type" {})))))
   (build! [this type alias]
     (when registry
