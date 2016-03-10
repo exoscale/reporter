@@ -11,4 +11,5 @@
                  [prismatic/schema           "1.0.4"]
                  [metrics-clojure            "2.6.1"]
                  [metrics-clojure-riemann    "2.6.1"]
-                 [metrics-clojure-jvm        "2.6.1"]])
+                 [metrics-clojure-jvm        "2.6.1"]
+                 [metrics-clojure-graphite   "2.6.1"]])

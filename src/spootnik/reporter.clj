@@ -5,6 +5,7 @@
             [raven.client               :as raven]
             [metrics.reporters.console  :as console]
             [metrics.reporters.jmx      :as jmx]
+            [metrics.reporters.graphite :as graphite]
             [metrics.reporters.riemann  :as riemann]
             [metrics.jvm.core           :as jvm]
             [metrics.core               :as m]
@@ -48,9 +49,11 @@
                   (s/optional-key :loop-thread-count) s/Num}]
     {(s/optional-key :sentry)  {:dsn                   s/Str
                                 (s/optional-key :http) http}
-     (s/optional-key :metrics) {:reporters {(s/optional-key :console) report-i
-                                            (s/optional-key :riemann) report-i
-                                            (s/optional-key :jmx)     report}}
+     (s/optional-key :metrics) {:reporters {(s/optional-key :console)  report-i
+                                            (s/optional-key :riemann)  report-i
+                                            (s/optional-key :graphite) report-i
+                                            (s/optional-key :jmx)      report
+                                            }}
      (s/optional-key :riemann) {:host                      s/Str
                                 (s/optional-key :batch)    s/Num
                                 (s/optional-key :defaults) s/Any}}))
@@ -117,6 +120,12 @@
                      c/Lifecycle
                      (start [this] (jmx/start r) this)
                      (stop [this]  (jmx/stop r) this)))
+       :graphite (let [r (graphite/reporter reg opts)]
+                   (info "building graphite reporter")
+                   (reify
+                     c/Lifecycle
+                     (start [this] (graphite/start r interval) this)
+                     (stop [this]  (graphite/stop r) this)))
        :riemann   (if-not rclient
                     (throw (ex-info "need a valid riemann client to build reporter" {}))
                     (let [r (riemann/reporter rclient reg opts)]
