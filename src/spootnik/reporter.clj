@@ -159,12 +159,16 @@
   c/Lifecycle
   (start [this]
     (let [rclient    (when riemann (riemann-client riemann))
-          [reg reps] (build-metrics metrics rclient)]
+          [reg reps] (build-metrics metrics rclient)
+          raven      (when sentry (http/build-client (:http sentry)))]
+      (when raven
+        (with-uncaught e
+          (capture! (assoc this :raven raven) e)))
       (assoc this
              :registry  reg
              :reporters reps
              :rclient   rclient
-             :raven     (when sentry (http/build-client (:http sentry))))))
+             :raven     raven)))
   (stop [this]
     (with-uncaught e
       (error e "uncaught exception."))
