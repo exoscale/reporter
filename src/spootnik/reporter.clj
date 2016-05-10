@@ -15,7 +15,8 @@
             [metrics.timers             :as tmr]
             [metrics.histograms         :as hst]
             [clojure.tools.logging      :refer [info error]]
-            [spootnik.uncaught          :refer [with-uncaught]]))
+            [spootnik.uncaught          :refer [with-uncaught]])
+  (:import  [com.aphyr.riemann.client RiemannClient RiemannBatchClient TcpTransport SSL]))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -38,6 +39,9 @@
   (let [report-i {:interval              s/Num
                   (s/optional-key :opts) s/Any}
         report   {(s/optional-key :opts) s/Any}
+        rssl     {:cert      s/Str
+                  :authority s/Str
+                  :pkey      s/Str}
         ssl      (s/either  {:bundle    s/Str
                              :password  s/Str}
                             {:cert      s/Str
@@ -58,19 +62,28 @@
                                 (s/optional-key :port)     s/Num
                                 (s/optional-key :protocol) s/Str
                                 (s/optional-key :batch)    s/Num
-                                (s/optional-key :defaults) s/Any}}))
+                                (s/optional-key :defaults) s/Any
+                                (s/optional-key :ssl)      rssl}}))
 
 (def config-validator
   (s/validator config-schema))
 
 (defn riemann-client
   "To keep dependency conflicts, let's use RiemannClient directly."
-  [{:keys [host port protocol batch],
-    :or {port 5555, protocol "tcp"}, :as opts}]
+  [{:keys [host port protocol batch ssl],
+    :or {port 5555, protocol "tcp"}}]
   (try
     (let [client (if (= protocol "tcp")
-                   (com.aphyr.riemann.client.RiemannClient/tcp host (int port))
-                   (com.aphyr.riemann.client.RiemannClient/udp host (int port)))]
+                   (if ssl
+                     (RiemannClient/wrap
+                       (doto (new TcpTransport host (int port))
+                         (-> .-sslContext
+                             (.set (SSL/sslContext
+                                     (:pkey ssl)
+                                     (:cert ssl)
+                                     (:authority ssl))))))
+                     (RiemannClient/tcp host (int port)))
+                   (RiemannClient/udp host (int port)))]
       (if batch
         (com.aphyr.riemann.client.RiemannBatchClient. client (int batch))
         client))
