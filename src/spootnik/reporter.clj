@@ -55,6 +55,8 @@
                                             (s/optional-key :jmx)      report
                                             }}
      (s/optional-key :riemann) {:host                      s/Str
+                                (s/optional-key :port)     s/Num
+                                (s/optional-key :protocol) s/Str
                                 (s/optional-key :batch)    s/Num
                                 (s/optional-key :defaults) s/Any}}))
 
@@ -63,21 +65,17 @@
 
 (defn riemann-client
   "To keep dependency conflicts, let's use RiemannClient directly."
-  [{:keys [host batch] :as opts}]
-  (let [port (or (:port opts) 5555)
-        tags (set (:tags opts))
-        tcp? (if-let [p (some-> opts :protocol keyword #{:tcp :udp})]
-               (= :tcp p)
-               true)]
-    (try
-      (let [client (if tcp?
-                     (com.aphyr.riemann.client.RiemannClient/tcp host (int port))
-                     (com.aphyr.riemann.client.RiemannClient/udp host (int port)))]
-        (if batch
-          (com.aphyr.riemann.client.RiemannBatchClient. client (int batch))
-          client))
-      (catch Exception e
-        (error e "cannot connect to riemann")))))
+  [{:keys [host port protocol batch],
+    :or {port 5555, protocol "tcp"}, :as opts}]
+  (try
+    (let [client (if (= protocol "tcp")
+                   (com.aphyr.riemann.client.RiemannClient/tcp host (int port))
+                   (com.aphyr.riemann.client.RiemannClient/udp host (int port)))]
+      (if batch
+        (com.aphyr.riemann.client.RiemannBatchClient. client (int batch))
+        client))
+    (catch Exception e
+      (error e "cannot connect to riemann"))))
 
 (defn riemann-event!
   [client defaults {:keys [host service time metric description] :as ev}]
