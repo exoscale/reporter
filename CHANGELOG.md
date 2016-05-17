@@ -1,3 +1,9 @@
+# Version 0.1.9
+
+## Improvements
+
+- When tags are provided ensure that they are as a seq
+
 # Version 0.1.8
 
 ## Improvements
