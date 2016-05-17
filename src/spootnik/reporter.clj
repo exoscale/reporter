@@ -286,3 +286,22 @@
    (map->Reporter nil))
   ([reporter]
    (map->Reporter reporter)))
+
+(extend-type nil
+  MetricHolder
+  (instrument! [this prefix])
+  (build! [this type alias])
+  (build! [this type alias f])
+  (inc! [this alias])
+  (inc! [this alias v])
+  (dec! [this alias])
+  (dec! [this alias v])
+  (mark! [this alias])
+  (update! [this alias v])
+  (time-fn! [this alias f])
+  (start! [this alias])
+  (stop! [this alias])
+  SentrySink
+  (capture! [this e])
+  RiemannSink
+  (send! [this ev]))
