@@ -1,3 +1,9 @@
+# Version 0.1.8
+
+## Improvements
+
+- Implement the protocol for nil
+
 # Version 0.1.7
 
 ## Improvements
