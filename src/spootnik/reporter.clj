@@ -72,9 +72,12 @@
 (def config-validator
   (s/validator config-schema))
 
-(defmulti build-client (comp keyword
-                             (fnil str/lower-case "tcp")
-                             :protocol))
+(def config->protocol
+  (comp keyword
+        str/lower-case
+        (fnil name "tcp")
+        :protocol))
+(defmulti build-client config->protocol)
 
 (defmethod build-client :udp
   [{:keys [host port] :or {host "127.0.0.1" port 5555}}]
@@ -93,6 +96,10 @@
                 (:pkey tls)
                 (:cert tls)
                 (:authority tls)))))))
+
+(defmethod build-client :default
+  [_]
+  (throw (ex-info "Cannot build riemann client for invalid protocol" {})))
 
 (defn riemann-client
   "To keep dependency conflicts, let's use RiemannClient directly."
