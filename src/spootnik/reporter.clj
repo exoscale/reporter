@@ -107,7 +107,7 @@
 
 (defn riemann-event!
   [client defaults {:keys [host service time metric description] :as ev}]
-  (let [tags  (set (concat (:tags defaults) (:tags ev)))
+  (let [tags  (some-> (concat (:tags defaults) (:tags ev)) set seq)
         attrs (merge (:attrs defaults) (:attrs ev))
         ttl   (if-let [t (or (:ttl ev) (:ttl defaults))] (float t))
         state (or (:state defaults) (:state ev))]
