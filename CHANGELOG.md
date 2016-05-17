@@ -1,3 +1,9 @@
+# Version 0.1.10
+
+## Bugfixes
+
+- Improve default configuration
+
 # Version 0.1.9
 
 ## Improvements
