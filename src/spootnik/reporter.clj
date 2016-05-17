@@ -73,8 +73,8 @@
   (s/validator config-schema))
 
 (defmulti build-client (comp keyword
-                             str/lower-case
-                             (fnil :protocol "tcp")))
+                             (fnil str/lower-case "tcp")
+                             :protocol))
 
 (defmethod build-client :udp
   [{:keys [host port] :or {host "127.0.0.1" port 5555}}]
@@ -85,7 +85,7 @@
   (RiemannClient/tcp host (int port)))
 
 (defmethod build-client :tls
-  [{:keys [host port tls] :or {host "127.0.0.1" port 5556}}]
+  [{:keys [host port tls] :or {host "127.0.0.1" port 5554}}]
   (RiemannClient/wrap
    (doto (new TcpTransport host (int port))
      (-> .-sslContext
