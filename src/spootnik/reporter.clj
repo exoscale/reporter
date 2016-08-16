@@ -106,11 +106,15 @@
   [{:keys [batch] :as opts}]
   (try
     (let [client (build-client opts)]
+      (try
+        (.connect client)
+        (catch Exception e
+          (error e "cannot connect to riemann")))
       (if (and batch (number? batch) (pos? batch))
         (RiemannBatchClient. client (int batch))
         client))
     (catch Exception e
-      (error e "cannot connect to riemann"))))
+      (error e "cannot create riemann client"))))
 
 (defn riemann-event!
   [client defaults {:keys [host service time metric description] :as ev}]
