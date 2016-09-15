@@ -46,8 +46,8 @@
         rtls     {:cert      s/Str
                   :authority s/Str
                   :pkey      s/Str}
-        ssl      (s/either  {:bundle    s/Str
-                             :password  s/Str}
+        ssl      (s/either  {:bundle   s/Str
+                             :password s/Str}
                             {:cert      s/Str
                              :authority s/Str
                              :pkey      s/Str})
@@ -55,19 +55,19 @@
                   (s/optional-key :disable-epoll)     s/Bool
                   (s/optional-key :logging)           s/Keyword
                   (s/optional-key :loop-thread-count) s/Num}]
-    {(s/optional-key :sentry)  {:dsn                   s/Str
-                                (s/optional-key :http) http}
-     (s/optional-key :metrics) {:reporters {(s/optional-key :console)  report-i
-                                            (s/optional-key :riemann)  report-i
-                                            (s/optional-key :graphite) report-i
-                                            (s/optional-key :jmx)      report
-                                            }}
-     (s/optional-key :riemann) {:host                      s/Str
-                                (s/optional-key :port)     s/Num
-                                (s/optional-key :protocol) s/Str
-                                (s/optional-key :batch)    s/Num
-                                (s/optional-key :defaults) s/Any
-                                (s/optional-key :tls)      rtls}}))
+    {(s/optional-key :prevent-capture?) s/Bool
+     (s/optional-key :sentry)           {:dsn                   s/Str
+                                         (s/optional-key :http) http}
+     (s/optional-key :metrics)          {:reporters {(s/optional-key :console)  report-i
+                                                     (s/optional-key :riemann)  report-i
+                                                     (s/optional-key :graphite) report-i
+                                                     (s/optional-key :jmx)      report}}
+     (s/optional-key :riemann)          {:host                      s/Str
+                                         (s/optional-key :port)     s/Num
+                                         (s/optional-key :protocol) s/Str
+                                         (s/optional-key :batch)    s/Num
+                                         (s/optional-key :defaults) s/Any
+                                         (s/optional-key :tls)      rtls}}))
 
 (def config-validator
   (s/validator config-schema))
@@ -192,13 +192,13 @@
     (map name v)
     (name v)))
 
-(defrecord Reporter [rclient raven reporters registry sentry metrics riemann]
+(defrecord Reporter [rclient raven reporters registry sentry metrics riemann prevent-capture?]
   c/Lifecycle
   (start [this]
     (let [rclient    (when riemann (riemann-client riemann))
           [reg reps] (build-metrics metrics rclient)
           raven      (when sentry (http/build-client (:http sentry)))]
-      (when raven
+      (when (and raven (not prevent-capture?))
         (with-uncaught e
           (capture! (assoc this :raven raven) e)))
       (assoc this
@@ -207,8 +207,9 @@
              :rclient   rclient
              :raven     raven)))
   (stop [this]
-    (with-uncaught e
-      (error e "uncaught exception."))
+    (when-not prevent-capture?
+      (with-uncaught e
+        (error e "uncaught exception.")))
     (doseq [r reporters]
       (c/stop r))
     (when registry
@@ -273,7 +274,7 @@
       (tmr/stop (tmr/timer registry (->alias alias)))))
   SentrySink
   (capture! [this e]
-    (error e "uncaught exception")
+    (error e "captured exception")
     (when raven
       (try
         (raven/capture! raven (:dsn sentry) e)
