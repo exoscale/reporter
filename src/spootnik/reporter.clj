@@ -302,8 +302,7 @@
 (extend-type nil
   MetricHolder
   (instrument! [this prefix])
-  (build! [this type alias])
-  (build! [this type alias f])
+  (build! ([this type alias]) ([this type alias f]))
   (inc! [this alias])
   (inc! [this alias v])
   (dec! [this alias])
