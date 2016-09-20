@@ -179,12 +179,11 @@
 
 (defn build-metrics
   [{:keys [reporters]} rclient]
-  (when reporters
-    (let [reg  (m/new-registry)
-          reps (build-metrics-reporters reg reporters rclient)]
-      (doseq [r reps]
-        (c/start r))
-      [reg reps])))
+  (let [reg  (m/new-registry)
+        reps (build-metrics-reporters reg reporters rclient)]
+    (doseq [r reps]
+      (c/start r))
+    [reg reps]))
 
 (defn ->alias
   [v]
