@@ -33,7 +33,7 @@
   (build! [this type alias] [this type alias f])
   (inc! [this alias] [this alias v])
   (dec! [this alias] [this alias v])
-  (mark! [this alias])
+  (mark! [this alias] [this alias v])
   (update! [this alias v])
   (time-fn! [this alias f])
   (start! [this alias])
@@ -259,6 +259,9 @@
   (mark! [this alias]
     (when registry
       (mtr/mark! (mtr/meter registry (->alias alias)))))
+  (mark! [this alias v]
+    (when registry
+      (mtr/mark! (mtr/meter registry (->alias alias)) v)))
   (update! [this alias v]
     (when registry
       (hst/update! (hst/histogram registry (->alias alias)) v)))
@@ -307,7 +310,7 @@
   (inc! [this alias v])
   (dec! [this alias])
   (dec! [this alias v])
-  (mark! [this alias])
+  (mark! ([this alias]) ([this alias v]))
   (update! [this alias v])
   (time-fn! [this alias f])
   (start! [this alias])
