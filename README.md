@@ -16,6 +16,13 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 [spootnik/reporter "0.1.13"]
 ```
 
+### Changelog
+
+#### 0.1.13
+
+- Make uncaught exception handler optional.
+- Start a registry, even with no reporters configured.
+
 ### Configuring
 
 Reporter exposes a schema if you wish to validate config, simply pull-in [schema.core](https://github.com/plumatic/schema) and either use `spootnik.reporter/config-schema`
