@@ -20,7 +20,8 @@
   (:import com.aphyr.riemann.client.RiemannClient
            com.aphyr.riemann.client.RiemannBatchClient
            com.aphyr.riemann.client.TcpTransport
-           com.aphyr.riemann.client.SSL))
+           com.aphyr.riemann.client.SSL
+           com.codahale.metrics.ScheduledReporter))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -101,11 +102,11 @@
   [_]
   (throw (ex-info "Cannot build riemann client for invalid protocol" {})))
 
-(defn riemann-client
+(defn ^RiemannClient riemann-client
   "To keep dependency conflicts, let's use RiemannClient directly."
   [{:keys [batch] :as opts}]
   (try
-    (let [client (build-client opts)]
+    (let [client ^RiemannClient (build-client opts)]
       (try
         (.connect client)
         (catch Exception e
@@ -117,21 +118,22 @@
       (error e "cannot create riemann client"))))
 
 (defn riemann-event!
-  [client defaults {:keys [host service time metric description] :as ev}]
+  [^RiemannClient client defaults {:keys [host service time ^Double metric description] :as ev}]
   (let [tags  (some-> (concat (:tags defaults) (:tags ev)) set seq)
         attrs (merge (:attrs defaults) (:attrs ev))
         ttl   (if-let [t (or (:ttl ev) (:ttl defaults))] (float t))
-        state (or (:state defaults) (:state ev))]
+        state (or (:state defaults) (:state ev))
+        time  ^Long (or time (quot (System/currentTimeMillis) 1000))]
     (-> (.event client)
         (.host (or host (:host defaults) (raven/localhost)))
         (.service (or service (:service defaults) "<none>"))
-        (.time (or time (quot (System/currentTimeMillis) 1000)))
+        (.time (long time))
         (cond-> metric      (.metric metric)
-                state       (.state state)
-                (seq attrs) (.attributes attrs)
-                (seq tags)  (.tags tags)
-                ttl         (.ttl ttl)
-                description (.description description))
+                state       (.state ^String state)
+                (seq attrs) (.attributes ^java.util.Map attrs)
+                (seq tags)  (.tags ^java.util.List tags)
+                ttl         (.ttl (float ttl))
+                description (.description ^String description))
         (.send)
         (.deref 100 java.util.concurrent.TimeUnit/MILLISECONDS))))
 
@@ -172,7 +174,7 @@
                          (start [this] (riemann/start r interval) this)
                          (stop [this]
                            (info "scheduling a final report of our metrics")
-                           (.report r)
+                           (.report ^ScheduledReporter r)
                            (riemann/stop r)
                            this))))
        (throw (ex-info "invalid metrics reporter" {}))))))
@@ -216,7 +218,7 @@
       (m/remove-all-metrics registry))
     (when rclient
       (try
-        (.close rclient)
+        (.close ^RiemannClient rclient)
         (catch Exception _)))
     (assoc this :raven nil :reporters nil :registry nil :rclient nil))
   MetricHolder
