@@ -13,10 +13,15 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[spootnik/reporter "0.1.13"]
+[spootnik/reporter "0.1.15"]
 ```
 
 ### Changelog
+
+#### 0.1.15
+
+- Bump to metrics-clojure 2.8.0
+- No more reflection
 
 #### 0.1.13
 
