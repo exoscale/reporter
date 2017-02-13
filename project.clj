@@ -1,4 +1,4 @@
-(defproject spootnik/reporter "0.1.16"
+(defproject spootnik/reporter "0.1.17"
   :description "error and event reporting component"
   :url "https://github.com/pyr/reporter"
   :license {:name "MIT/ISC"}
@@ -10,7 +10,7 @@
                  [spootnik/net               "0.3.3-beta9"]
                  [spootnik/uncaught          "0.5.3"]
                  [prismatic/schema           "1.1.3"]
-                 [metrics-clojure            "2.8.0"]
-                 [metrics-clojure-riemann    "2.8.0"]
-                 [metrics-clojure-jvm        "2.8.0"]
-                 [metrics-clojure-graphite   "2.8.0"]])
+                 [metrics-clojure            "2.9.0"]
+                 [metrics-clojure-riemann    "2.9.0"]
+                 [metrics-clojure-jvm        "2.9.0"]
+                 [metrics-clojure-graphite   "2.9.0"]])
