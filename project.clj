@@ -1,4 +1,4 @@
-(defproject spootnik/reporter "0.1.18"
+(defproject spootnik/reporter "0.1.19"
   :description "error and event reporting component"
   :url "https://github.com/pyr/reporter"
   :license {:name "MIT/ISC"}
