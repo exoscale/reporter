@@ -9,7 +9,6 @@
                  [spootnik/raven             "0.1.3"]
                  [spootnik/net               "0.3.3-beta13"]
                  [spootnik/uncaught          "0.5.3"]
-                 [prismatic/schema           "1.1.3"]
                  [metrics-clojure            "2.10.0"]
                  [metrics-clojure-riemann    "2.10.0"]
                  [metrics-clojure-jvm        "2.10.0"]

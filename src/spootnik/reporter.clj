@@ -1,6 +1,6 @@
 (ns spootnik.reporter
   (:require [com.stuartsierra.component :as c]
-            [schema.core                :as s]
+            [clojure.spec.alpha         :as s]
             [net.http.client            :as http]
             [raven.client               :as raven]
             [metrics.reporters.console  :as console]
@@ -40,44 +40,12 @@
   (start! [this alias])
   (stop! [this alias]))
 
-(def config-schema
-  (let [report-i {:interval              s/Num
-                  (s/optional-key :opts) s/Any}
-        report   {(s/optional-key :opts) s/Any}
-        rtls     {:cert      s/Str
-                  :authority s/Str
-                  :pkey      s/Str}
-        ssl      (s/either  {:bundle   s/Str
-                             :password s/Str}
-                            {:cert      s/Str
-                             :authority s/Str
-                             :pkey      s/Str})
-        http     {(s/optional-key :ssl)               ssl
-                  (s/optional-key :disable-epoll)     s/Bool
-                  (s/optional-key :logging)           s/Keyword
-                  (s/optional-key :loop-thread-count) s/Num}]
-    {(s/optional-key :prevent-capture?) s/Bool
-     (s/optional-key :sentry)           {:dsn                   s/Str
-                                         (s/optional-key :http) http}
-     (s/optional-key :metrics)          {:reporters {(s/optional-key :console)  report-i
-                                                     (s/optional-key :riemann)  report-i
-                                                     (s/optional-key :graphite) report-i
-                                                     (s/optional-key :jmx)      report}}
-     (s/optional-key :riemann)          {:host                      s/Str
-                                         (s/optional-key :port)     s/Num
-                                         (s/optional-key :protocol) s/Str
-                                         (s/optional-key :batch)    s/Num
-                                         (s/optional-key :defaults) s/Any
-                                         (s/optional-key :tls)      rtls}}))
-
-(def config-validator
-  (s/validator config-schema))
-
 (def config->protocol
   (comp keyword
         str/lower-case
         (fnil name "tcp")
         :protocol))
+
 (defmulti build-client config->protocol)
 
 (defmethod build-client :udp
@@ -318,3 +286,35 @@
   (capture! [this e])
   RiemannSink
   (send! [this ev]))
+
+(s/def ::bundle string?)
+(s/def ::password string?)
+(s/def ::ssl-bundle (s/keys :req-un [::bundle ::password]))
+(s/def ::cert string?)
+(s/def ::authority string?)
+(s/def ::pkey string?)
+(s/def ::ssl-cert (s/keys :req-un [::cert ::authority ::pkey]))
+(s/def ::ssl (s/or :bundle ::ssl-bundle :cert ::ssl-cert))
+
+
+(s/def ::prevent-capture? boolean?)
+
+(s/def ::dsn string?)
+(s/def ::port pos-int?)
+(s/def ::host string?)
+(s/def ::protocol string?)
+(s/def ::batch pos-int?)
+(s/def ::defaults any?)
+(s/def ::tls ::ssl-cert)
+
+(s/def ::riemann (s/keys :req-un [::host] :opt-un [::port ::protocol ::batch ::defaults ::tls]))
+
+(s/def ::opts map?)
+(s/def ::interval pos-int?)
+(s/def ::reporter-config (s/keys :req-un [] :opt-un [::interval ::opts]))
+(s/def ::reporters (s/map-of reporter? ::reporter-config))
+(s/def ::metrics (s/keys :req-un [::reporters]))
+
+(s/def ::http (s/keys :req-un [] :opt-un [::ssl ::disable-epoll ::logging ::loop-thread-count]))
+(s/def ::sentry (s/keys :req-un [::dsn] :opt-un [::http]))
+(s/def ::config (s/keys :req-un [] :opt-un [::prevent-capture? ::sentry ::metrics ::riemann]))
