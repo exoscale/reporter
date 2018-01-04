@@ -2,7 +2,11 @@
   :description "error and event reporting component"
   :url "https://github.com/pyr/reporter"
   :license {:name "MIT/ISC"}
-  :profiles {:dev {:global-vars {*warn-on-reflection* true}}}
+  :profiles {:dev {:global-vars    {*warn-on-reflection* true}
+                   :resource-paths ["test/resources"]
+                   :dependencies   [[org.slf4j/slf4j-api        "1.7.25"]
+                                    [org.slf4j/slf4j-log4j12    "1.7.25"]
+                                    [org.clojure/tools.logging  "0.4.0"]]}}
   :dependencies [[org.clojure/clojure        "1.9.0"]
                  [org.clojure/tools.logging  "0.4.0"]
                  [com.stuartsierra/component "0.3.2"]

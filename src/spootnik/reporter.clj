@@ -312,7 +312,7 @@
 (s/def ::opts map?)
 (s/def ::interval pos-int?)
 (s/def ::reporter-config (s/keys :req-un [] :opt-un [::interval ::opts]))
-(s/def ::reporters (s/map-of reporter? ::reporter-config))
+(s/def ::reporters (s/map-of #{:graphite :riemann :console :jmx} ::reporter-config))
 (s/def ::metrics (s/keys :req-un [::reporters]))
 
 (s/def ::http (s/keys :req-un [] :opt-un [::ssl ::disable-epoll ::logging ::loop-thread-count]))
