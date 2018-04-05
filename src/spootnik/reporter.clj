@@ -279,7 +279,7 @@
   (dec! ([this alias]) ([this alias v]))
   (mark! ([this alias]) ([this alias v]))
   (update! [this alias v])
-  (time-fn! [this alias f])
+  (time-fn! [this alias f] (f))
   (start! [this alias])
   (stop! [this alias])
   SentrySink
