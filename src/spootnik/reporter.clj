@@ -21,7 +21,11 @@
            com.aphyr.riemann.client.RiemannBatchClient
            com.aphyr.riemann.client.TcpTransport
            com.aphyr.riemann.client.SSL
-           com.codahale.metrics.ScheduledReporter))
+           com.aphyr.riemann.client.EventDSL
+           com.codahale.metrics.ScheduledReporter
+           java.util.concurrent.TimeUnit
+           java.util.List
+           java.util.Map))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -85,8 +89,7 @@
     (catch Exception e
       (error e "cannot create riemann client"))))
 
-(defn riemann-event!
-  [^RiemannClient client defaults {:keys [host service time ^Double metric description] :as ev}]
+(defn ->event [^RiemannClient client defaults {:keys [host service time ^Double metric description] :as ev}]
   (let [tags  (some-> (concat (:tags defaults) (:tags ev)) set seq)
         attrs (merge (:attrs defaults) (:attrs ev))
         ttl   (if-let [t (or (:ttl ev) (:ttl defaults))] (float t))
@@ -98,12 +101,23 @@
         (.time (long time))
         (cond-> metric      (.metric metric)
                 state       (.state ^String state)
-                (seq attrs) (.attributes ^java.util.Map attrs)
-                (seq tags)  (.tags ^java.util.List tags)
+                (seq attrs) (.attributes ^Map attrs)
+                (seq tags)  (.tags ^List tags)
                 ttl         (.ttl (float ttl))
                 description (.description ^String description))
-        (.send)
-        (.deref 100 java.util.concurrent.TimeUnit/MILLISECONDS))))
+        (.build))))
+
+(defn riemann-event! [^RiemannClient client defaults event]
+  (-> client
+      (.sendEvent (->event client defaults event))
+      (deref 100 TimeUnit/MILLISECONDS)))
+
+(defn riemann-events!
+  [^RiemannClient client defaults events]
+  (let [^List events' (list (map #(->event client defaults %) events))]
+    (-> client
+        (.sendEvents  events')
+        (.deref 100 TimeUnit/MILLISECONDS))))
 
 (defn build-metrics-reporters
   [reg reporters rclient]
@@ -255,7 +269,9 @@
   RiemannSink
   (send! [this ev]
     (when rclient
-      (riemann-event! rclient (:defaults riemann) ev))))
+      (if (map? ev)
+        (riemann-event! rclient (:defaults riemann) ev)
+        (riemann-events! rclient (:defaults riemann) ev)))))
 
 (defmacro time!
   [reporter alias & body]
