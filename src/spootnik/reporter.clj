@@ -27,7 +27,7 @@
   (send! [this e]))
 
 (defprotocol SentrySink
-  (capture! [this e]))
+  (capture! [this e] [this e tags]))
 
 (defprotocol MetricHolder
   (instrument! [this prefix])
@@ -249,7 +249,14 @@
     (error e "captured exception")
     (when raven
       (try
-        (raven/capture! raven (:dsn sentry) e)
+        (raven/capture! {:http raven} (:dsn sentry) e)
+        (catch Exception e
+          (error e "could not send capture")))))
+  (capture! [this e tags]
+    (error e "captured exception")
+    (when raven
+      (try
+        (raven/capture! {:http raven} (:dsn sentry) e tags)
         (catch Exception e
           (error e "could not send capture")))))
   RiemannSink
@@ -283,7 +290,7 @@
   (start! [this alias])
   (stop! [this alias])
   SentrySink
-  (capture! [this e])
+  (capture! ([this e]) ([this e tags]))
   RiemannSink
   (send! [this ev]))
 
