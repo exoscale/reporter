@@ -1,4 +1,4 @@
-(defproject exoscale/reporter "0.1.24"
+(defproject exoscale/reporter "0.1.25"
   :description "error and event reporting component"
   :url "https://github.com/pyr/reporter"
   :license {:name "MIT/ISC"}

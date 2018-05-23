@@ -13,10 +13,14 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.24"]
+[exoscale/reporter "0.1.25"]
 ```
 
 ### Changelog
+
+#### 0.1.25
+
+- Fixed arity bug in forwarding tags to Raven
 
 #### 0.1.24
 
