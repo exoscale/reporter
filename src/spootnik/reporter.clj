@@ -107,23 +107,17 @@
                 description (.description ^String description))
         (.build))))
 
-(defmulti riemann-send (fn [_ events] (count events)))
-
-(defmethod riemann-send 1
-  [^RiemannClient client events]
-  (.sendEvent client (first events)))
-
-(defmethod riemann-send :default
-  [^RiemannClient client ^List events]
-  (.sendEvents client events))
+(defn riemann-send [^RiemannClient client ^List events]
+  (if (= (count events) 1)
+     (.sendEvent client (first events))
+     (.sendEvents client events)))
 
 (defn riemann-events!
-  [^RiemannClient client defaults events]
-  (let [^List events' (list (map #(->event client defaults %) events))]
-    (when (any? events')
-      (-> client
-          (riemann-send events')
-          (.deref 100 TimeUnit/MILLISECONDS)))))
+  [client defaults events]
+  (->> events
+       (map #(->event client defaults %))
+       (riemann-send client)
+       (.deref 100 TimeUnit/MILLISECONDS)))
 
 (defn build-metrics-reporters
   [reg reporters rclient]
