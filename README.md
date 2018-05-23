@@ -13,10 +13,15 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[spootnik/reporter "0.1.22
+[exoscale/reporter "0.1.24"]
 ```
 
 ### Changelog
+
+#### 0.1.24
+
+- Added support for new raven (capture!) arity
+- Switched to raven 0.2.0
 
 #### 0.1.22
 
