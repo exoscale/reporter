@@ -249,7 +249,7 @@
     (error e "captured exception")
     (when raven
       (try
-        (raven/capture! {:http raven} (:dsn sentry) e)
+        (raven/capture! {:http raven} (:dsn sentry) e {})
         (catch Exception e
           (error e "could not send capture")))))
   (capture! [this e tags]
