@@ -107,17 +107,23 @@
                 description (.description ^String description))
         (.build))))
 
-(defn riemann-event! [^RiemannClient client defaults event]
-  (-> client
-      (.sendEvent (->event client defaults event))
-      (deref 100 TimeUnit/MILLISECONDS)))
+(defmulti riemann-send (fn [_ events] (count events)))
+
+(defmethod riemann-send 1
+  [^RiemannClient client events]
+  (.sendEvent client (first events)))
+
+(defmethod riemann-send :default
+  [^RiemannClient client ^List events]
+  (.sendEvents client events))
 
 (defn riemann-events!
   [^RiemannClient client defaults events]
   (let [^List events' (list (map #(->event client defaults %) events))]
-    (-> client
-        (.sendEvents  events')
-        (.deref 100 TimeUnit/MILLISECONDS))))
+    (when (any? events')
+      (-> client
+          (riemann-send events')
+          (.deref 100 TimeUnit/MILLISECONDS)))))
 
 (defn build-metrics-reporters
   [reg reporters rclient]
@@ -269,9 +275,7 @@
   RiemannSink
   (send! [this ev]
     (when rclient
-      (if (map? ev)
-        (riemann-event! rclient (:defaults riemann) ev)
-        (riemann-events! rclient (:defaults riemann) ev)))))
+      (riemann-events! rclient (:defaults riemann) ev))))
 
 (defmacro time!
   [reporter alias & body]
