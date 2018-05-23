@@ -4,7 +4,7 @@
  {org.clojure/clojure        "1.9.0"
   org.clojure/tools.logging  "0.4.0"
   com.stuartsierra/component "0.3.2"
-  spootnik/raven             "0.1.4"
+  exoscale/raven             "0.2.0"
   spootnik/net               "0.3.3-beta24"
   spootnik/uncaught          "0.5.3"
   metrics-clojure            "2.10.0"
