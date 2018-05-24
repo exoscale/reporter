@@ -270,17 +270,6 @@
     (when rclient
       (riemann-events! rclient (:defaults riemann) (if (map? ev) [ev] ev)))))
 
-(comment
-  (let [rpt (-> {:riemann {:host "localhost" :port 5555 :protocol "tcp"}
-                 :metrics {:reporters {:riemann {:interval 10}}}}
-                (map->Reporter)
-                (c/start))]
-    (send! rpt {:host "whereami" :service "whatido" :metric 10.0 :state "ko"})
-    (send! rpt [{:host "whereami" :service "whatido" :metric 10.1 :state "ok"}
-                {:host "whereami" :service "whatido" :metric 10.2 :state "ok"}
-                {:host "whereami" :service "whatido" :metric 10.3 :state "ok"}
-                ]))
-  )
 
 (defmacro time!
   [reporter alias & body]
