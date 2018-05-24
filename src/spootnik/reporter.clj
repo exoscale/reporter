@@ -105,19 +105,18 @@
                 (seq tags)  (.tags ^List tags)
                 ttl         (.ttl (float ttl))
                 description (.description ^String description))
+        ^EventDSL
         (.build))))
 
-(defn riemann-send [^RiemannClient client ^List events]
+(defn riemann-send [^RiemannClient client events]
   (if (= (count events) 1)
-     (.sendEvent client (first events))
-     (.sendEvents client events)))
+    (.sendEvent client (first events))
+    (.sendEvents client ^List events)))
 
 (defn riemann-events!
   [client defaults events]
-  (->> events
-       (map #(->event client defaults %))
-       (riemann-send client)
-       (.deref 100 TimeUnit/MILLISECONDS)))
+  (-> (riemann-send client (map #(->event client defaults %) events))
+      (.deref 100 TimeUnit/MILLISECONDS)))
 
 (defn build-metrics-reporters
   [reg reporters rclient]
@@ -269,7 +268,19 @@
   RiemannSink
   (send! [this ev]
     (when rclient
-      (riemann-events! rclient (:defaults riemann) ev))))
+      (riemann-events! rclient (:defaults riemann) (if (map? ev) [ev] ev)))))
+
+(comment
+  (let [rpt (-> {:riemann {:host "localhost" :port 5555 :protocol "tcp"}
+                 :metrics {:reporters {:riemann {:interval 10}}}}
+                (map->Reporter)
+                (c/start))]
+    (send! rpt {:host "whereami" :service "whatido" :metric 10.0 :state "ko"})
+    (send! rpt [{:host "whereami" :service "whatido" :metric 10.1 :state "ok"}
+                {:host "whereami" :service "whatido" :metric 10.2 :state "ok"}
+                {:host "whereami" :service "whatido" :metric 10.3 :state "ok"}
+                ]))
+  )
 
 (defmacro time!
   [reporter alias & body]
@@ -332,3 +343,4 @@
 (s/def ::http (s/keys :req-un [] :opt-un [::ssl ::disable-epoll ::logging ::loop-thread-count]))
 (s/def ::sentry (s/keys :req-un [::dsn] :opt-un [::http]))
 (s/def ::config (s/keys :req-un [] :opt-un [::prevent-capture? ::sentry ::metrics ::riemann]))
+
