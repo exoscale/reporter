@@ -272,7 +272,10 @@
   RiemannSink
   (send! [this ev]
     (when rclient
-      (riemann-events! rclient (:defaults riemann) (if (map? ev) [ev] ev)))))
+      (let [to-seq #(if-not (sequential? %) [%] %)]
+        (->> ev
+             to-seq
+             (riemann-events! rclient (:defaults riemann)))))))
 
 (defmacro time!
   [reporter alias & body]
