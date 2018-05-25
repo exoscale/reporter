@@ -122,7 +122,7 @@
                       (console/stop r)
                       this)))
        :jmx      (let [r (jmx/reporter reg opts)]
-                  (info "building jmx reporter")
+                   (info "building jmx reporter")
                    (reify
                      c/Lifecycle
                      (start [this] (jmx/start r) this)
@@ -137,14 +137,14 @@
                     (throw (ex-info "need a valid riemann client to build reporter" {}))
                     (let [r (riemann/reporter rclient reg opts)]
                       (info "building riemann reporter")
-                       (reify
-                         c/Lifecycle
-                         (start [this] (riemann/start r interval) this)
-                         (stop [this]
-                           (info "scheduling a final report of our metrics")
-                           (.report ^ScheduledReporter r)
-                           (riemann/stop r)
-                           this))))
+                      (reify
+                        c/Lifecycle
+                        (start [this] (riemann/start r interval) this)
+                        (stop [this]
+                          (info "scheduling a final report of our metrics")
+                          (.report ^ScheduledReporter r)
+                          (riemann/stop r)
+                          this))))
        (throw (ex-info "invalid metrics reporter" {}))))))
 
 (defn build-metrics
@@ -246,19 +246,11 @@
       (tmr/stop (tmr/timer registry (->alias alias)))))
   SentrySink
   (capture! [this e]
-    (error e "captured exception")
-    (when raven
-      (try
-        (raven/capture! {:http raven} (:dsn sentry) e {})
-        (catch Exception e
-          (error e "could not send capture")))))
+    (capture! this e {}))
   (capture! [this e tags]
-    (error e "captured exception")
     (when raven
-      (try
-        (raven/capture! {:http raven} (:dsn sentry) e tags)
-        (catch Exception e
-          (error e "could not send capture")))))
+      (let [event-id (raven/capture! {:http_client raven} (:dsn sentry) e tags)]
+        (error e (str "captured exception as sentry event: " event-id)))))
   RiemannSink
   (send! [this ev]
     (when rclient
@@ -302,7 +294,6 @@
 (s/def ::pkey string?)
 (s/def ::ssl-cert (s/keys :req-un [::cert ::authority ::pkey]))
 (s/def ::ssl (s/or :bundle ::ssl-bundle :cert ::ssl-cert))
-
 
 (s/def ::prevent-capture? boolean?)
 
