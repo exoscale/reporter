@@ -1,4 +1,4 @@
-(defproject exoscale/reporter "0.1.25"
+(defproject exoscale/reporter "0.1.26"
   :description "error and event reporting component"
   :url "https://github.com/pyr/reporter"
   :license {:name "MIT/ISC"}
@@ -10,7 +10,7 @@
   :dependencies [[org.clojure/clojure        "1.9.0"]
                  [org.clojure/tools.logging  "0.4.0"]
                  [com.stuartsierra/component "0.3.2"]
-                 [exoscale/raven             "0.2.0"]
+                 [exoscale/raven             "0.3.0"]
                  [spootnik/net               "0.3.3-beta24"]
                  [spootnik/uncaught          "0.5.3"]
                  [metrics-clojure            "2.10.0"]
