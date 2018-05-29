@@ -21,7 +21,12 @@
            com.aphyr.riemann.client.RiemannBatchClient
            com.aphyr.riemann.client.TcpTransport
            com.aphyr.riemann.client.SSL
-           com.codahale.metrics.ScheduledReporter))
+           com.aphyr.riemann.client.EventDSL
+           com.aphyr.riemann.client.IPromise
+           com.codahale.metrics.ScheduledReporter
+           java.util.concurrent.TimeUnit
+           java.util.List
+           java.util.Map))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -85,8 +90,7 @@
     (catch Exception e
       (error e "cannot create riemann client"))))
 
-(defn riemann-event!
-  [^RiemannClient client defaults {:keys [host service time ^Double metric description] :as ev}]
+(defn ->event [^RiemannClient client defaults {:keys [host service time ^Double metric description] :as ev}]
   (let [tags  (some-> (concat (:tags defaults) (:tags ev)) set seq)
         attrs (merge (:attrs defaults) (:attrs ev))
         ttl   (if-let [t (or (:ttl ev) (:ttl defaults))] (float t))
@@ -98,12 +102,25 @@
         (.time (long time))
         (cond-> metric      (.metric metric)
                 state       (.state ^String state)
-                (seq attrs) (.attributes ^java.util.Map attrs)
-                (seq tags)  (.tags ^java.util.List tags)
+                (seq attrs) (.attributes ^Map attrs)
+                (seq tags)  (.tags ^List tags)
                 ttl         (.ttl (float ttl))
                 description (.description ^String description))
-        (.send)
-        (.deref 100 java.util.concurrent.TimeUnit/MILLISECONDS))))
+        ^EventDSL
+        (.build))))
+
+(defn riemann-send [^RiemannClient client events]
+  (if (= (count events) 1)
+    (.sendEvent client (first events))
+    (.sendEvents client ^List events)))
+
+(defn riemann-events!
+  [client defaults events]
+  (let [deref' #(.deref ^IPromise % 100 TimeUnit/MILLISECONDS)]
+    (->> events
+         (map #(->event client defaults %))
+         (riemann-send client )
+         (deref'))))
 
 (defn build-metrics-reporters
   [reg reporters rclient]
@@ -254,7 +271,10 @@
   RiemannSink
   (send! [this ev]
     (when rclient
-      (riemann-event! rclient (:defaults riemann) ev))))
+      (let [to-seq #(if-not (sequential? %) [%] %)]
+        (->> ev
+             to-seq
+             (riemann-events! rclient (:defaults riemann)))))))
 
 (defmacro time!
   [reporter alias & body]
@@ -316,3 +336,4 @@
 (s/def ::http (s/keys :req-un [] :opt-un [::ssl ::disable-epoll ::logging ::loop-thread-count]))
 (s/def ::sentry (s/keys :req-un [::dsn] :opt-un [::http]))
 (s/def ::config (s/keys :req-un [] :opt-un [::prevent-capture? ::sentry ::metrics ::riemann]))
+
