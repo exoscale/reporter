@@ -13,10 +13,16 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.25"]
+[exoscale/reporter "0.1.26"]
 ```
 
 ### Changelog
+
+#### 0.1.26
+
+- Allow multiple Riemann events
+- Sentry events now log the Sentry UUID
+- Switched to Raven 0.3.0
 
 #### 0.1.25
 
