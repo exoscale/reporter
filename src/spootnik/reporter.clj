@@ -1,7 +1,7 @@
 (ns spootnik.reporter
   (:require [com.stuartsierra.component :as c]
             [clojure.spec.alpha         :as s]
-            [net.http.client            :as http]
+            [aleph.http                 :as http]
             [raven.client               :as raven]
             [metrics.reporters.console  :as console]
             [metrics.reporters.jmx      :as jmx]
@@ -119,7 +119,7 @@
   (let [deref' #(.deref ^IPromise % 100 TimeUnit/MILLISECONDS)]
     (->> events
          (map #(->event client defaults %))
-         (riemann-send client )
+         (riemann-send client)
          (deref'))))
 
 (defn build-metrics-reporters
@@ -178,12 +178,15 @@
     (map name v)
     (name v)))
 
+;; "sentry" is a sentry map like {:dsn "..."}
+;; "raven" should be either nothing or an aleph connection pool. In case it's
+;; nothing (nil), it will use the default aleph connection pool.
 (defrecord Reporter [rclient raven reporters registry sentry metrics riemann prevent-capture?]
   c/Lifecycle
   (start [this]
     (let [rclient    (when riemann (riemann-client riemann))
           [reg reps] (build-metrics metrics rclient)
-          raven      (when sentry (http/build-client (:http sentry)))]
+          raven      (when sentry (or raven http/default-connection-pool))]
       (when (and raven (not prevent-capture?))
         (with-uncaught e
           (capture! (assoc this :raven raven) e)))
@@ -266,7 +269,7 @@
     (capture! this e {}))
   (capture! [this e tags]
     (when raven
-      (let [event-id (raven/capture! {:http_client raven} (:dsn sentry) e tags)]
+      (let [event-id (raven/capture! {:pool raven} (:dsn sentry) e tags)]
         (error e (str "captured exception as sentry event: " event-id)))))
   RiemannSink
   (send! [this ev]
@@ -333,7 +336,6 @@
 (s/def ::reporters (s/map-of #{:graphite :riemann :console :jmx} ::reporter-config))
 (s/def ::metrics (s/keys :req-un [::reporters]))
 
-(s/def ::http (s/keys :req-un [] :opt-un [::ssl ::disable-epoll ::logging ::loop-thread-count]))
-(s/def ::sentry (s/keys :req-un [::dsn] :opt-un [::http]))
+(s/def ::sentry (s/keys :req-un [::dsn]))
 (s/def ::config (s/keys :req-un [] :opt-un [::prevent-capture? ::sentry ::metrics ::riemann]))
 
