@@ -13,12 +13,12 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.28"]
+[exoscale/reporter "0.1.31"]
 ```
 
 ### Changelog
 
-#### 0.1.28
+#### 0.1.31
 
 - Updated raven dependency to 0.4.2
 - Added support for passing aleph connection pools to raven.
