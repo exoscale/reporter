@@ -13,10 +13,14 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.32"]
+[exoscale/reporter "0.1.33"]
 ```
 
 ### Changelog
+
+#### 0.1.33
+
+- Updated raven dependency to 0.4.4
 
 #### 0.1.32
 
