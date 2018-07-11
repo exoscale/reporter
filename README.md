@@ -13,10 +13,14 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.31"]
+[exoscale/reporter "0.1.32"]
 ```
 
 ### Changelog
+
+#### 0.1.32
+
+- Added support for multiple aleph options.
 
 #### 0.1.31
 
