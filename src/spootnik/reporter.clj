@@ -1,7 +1,6 @@
 (ns spootnik.reporter
   (:require [com.stuartsierra.component :as c]
             [clojure.spec.alpha         :as s]
-            [aleph.http                 :as http]
             [raven.client               :as raven]
             [metrics.reporters.console  :as console]
             [metrics.reporters.jmx      :as jmx]
@@ -186,7 +185,7 @@
   (start [this]
     (let [rclient    (when riemann (riemann-client riemann))
           [reg reps] (build-metrics metrics rclient)
-          raven      (when sentry (or raven http/default-connection-pool))]
+          raven      (when sentry raven)]
       (when (and raven (not prevent-capture?))
         (with-uncaught e
           (capture! (assoc this :raven raven) e)))
