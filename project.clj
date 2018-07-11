@@ -1,4 +1,4 @@
-(defproject exoscale/reporter "0.1.32"
+(defproject exoscale/reporter "0.1.33"
   :description "error and event reporting component"
   :url "https://github.com/exoscale/reporter"
   :license {:name "MIT/ISC"}
@@ -6,11 +6,11 @@
                    :resource-paths ["test/resources"]
                    :dependencies   [[org.slf4j/slf4j-api        "1.7.25"]
                                     [org.slf4j/slf4j-log4j12    "1.7.25"]
-                                    [org.clojure/tools.logging  "0.4.0"]]}}
+                                    [org.clojure/tools.logging  "0.4.1"]]}}
   :dependencies [[org.clojure/clojure        "1.9.0"]
-                 [org.clojure/tools.logging  "0.4.0"]
+                 [org.clojure/tools.logging  "0.4.1"]
                  [com.stuartsierra/component "0.3.2"]
-                 [exoscale/raven             "0.4.3"]
+                 [exoscale/raven             "0.4.4"]
                  [spootnik/uncaught          "0.5.5"]
                  [metrics-clojure            "2.10.0"]
                  [metrics-clojure-riemann    "2.10.0"]
