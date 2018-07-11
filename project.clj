@@ -10,7 +10,7 @@
   :dependencies [[org.clojure/clojure        "1.9.0"]
                  [org.clojure/tools.logging  "0.4.0"]
                  [com.stuartsierra/component "0.3.2"]
-                 [exoscale/raven             "0.4.2"]
+                 [exoscale/raven             "0.4.3-SNAPSHOT"]
                  [spootnik/uncaught          "0.5.5"]
                  [metrics-clojure            "2.10.0"]
                  [metrics-clojure-riemann    "2.10.0"]
