@@ -1,6 +1,6 @@
-(defproject exoscale/reporter "0.1.31"
+(defproject exoscale/reporter "0.1.32-SNAPSHOT"
   :description "error and event reporting component"
-  :url "https://github.com/pyr/reporter"
+  :url "https://github.com/exoscale/reporter"
   :license {:name "MIT/ISC"}
   :profiles {:dev {:global-vars    {*warn-on-reflection* true}
                    :resource-paths ["test/resources"]
@@ -11,8 +11,7 @@
                  [org.clojure/tools.logging  "0.4.0"]
                  [com.stuartsierra/component "0.3.2"]
                  [exoscale/raven             "0.4.2"]
-                 [aleph                      "0.4.4"]
-                 [spootnik/uncaught          "0.5.3"]
+                 [spootnik/uncaught          "0.5.5"]
                  [metrics-clojure            "2.10.0"]
                  [metrics-clojure-riemann    "2.10.0"]
                  [metrics-clojure-jvm        "2.10.0"]
