@@ -1,7 +1,6 @@
 (ns spootnik.reporter
   (:require [com.stuartsierra.component :as c]
             [clojure.spec.alpha         :as s]
-            [aleph.http                 :as http]
             [raven.client               :as raven]
             [metrics.reporters.console  :as console]
             [metrics.reporters.jmx      :as jmx]
@@ -179,22 +178,22 @@
     (name v)))
 
 ;; "sentry" is a sentry map like {:dsn "..."}
-;; "raven" should be either nothing or an aleph connection pool. In case it's
-;; nothing (nil), it will use the default aleph connection pool.
-(defrecord Reporter [rclient raven reporters registry sentry metrics riemann prevent-capture?]
+;; "raven-options" is the options map sent to raven http client
+;; http://aleph.io/codox/aleph/aleph.http.html#var-request
+(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture?]
   c/Lifecycle
   (start [this]
     (let [rclient    (when riemann (riemann-client riemann))
           [reg reps] (build-metrics metrics rclient)
-          raven      (when sentry (or raven http/default-connection-pool))]
-      (when (and raven (not prevent-capture?))
+          options    (when sentry (or raven-options {}))]
+      (when (not prevent-capture?)
         (with-uncaught e
-          (capture! (assoc this :raven raven) e)))
+          (capture! (assoc this :raven-options options) e)))
       (assoc this
-             :registry  reg
-             :reporters reps
-             :rclient   rclient
-             :raven     raven)))
+             :registry      reg
+             :reporters     reps
+             :rclient       rclient
+             :raven-options options)))
   (stop [this]
     (when-not prevent-capture?
       (with-uncaught e
@@ -208,7 +207,7 @@
       (try
         (.close ^RiemannClient rclient)
         (catch Exception _)))
-    (assoc this :raven nil :reporters nil :registry nil :rclient nil))
+    (assoc this :raven-options nil :reporters nil :registry nil :rclient nil))
   MetricHolder
   (instrument! [this prefix]
     (when registry
@@ -268,8 +267,8 @@
   (capture! [this e]
     (capture! this e {}))
   (capture! [this e tags]
-    (when raven
-      (let [event-id (raven/capture! {:pool raven} (:dsn sentry) e tags)]
+    (when (:dsn sentry)
+      (let [event-id (raven/capture! raven-options (:dsn sentry) e tags)]
         (error e (str "captured exception as sentry event: " event-id)))))
   RiemannSink
   (send! [this ev]
