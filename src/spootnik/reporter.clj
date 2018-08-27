@@ -186,7 +186,7 @@
     (let [rclient    (when riemann (riemann-client riemann))
           [reg reps] (build-metrics metrics rclient)
           options    (when sentry (or raven-options {}))]
-      (when (not prevent-capture?)
+      (when-not prevent-capture?
         (with-uncaught e
           (capture! (assoc this :raven-options options) e)))
       (assoc this
@@ -337,4 +337,3 @@
 
 (s/def ::sentry (s/keys :req-un [::dsn]))
 (s/def ::config (s/keys :req-un [] :opt-un [::prevent-capture? ::sentry ::metrics ::riemann]))
-
