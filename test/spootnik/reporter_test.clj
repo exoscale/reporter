@@ -20,7 +20,7 @@
     (let [reporter (component/start (map->Reporter {:sentry {:dsn ":memory:"}
                                                     :metrics {:reporters {:console {:interval 100}}}}))]
 
-      (.capture! reporter {:message "A simple test event"})
+      (.capture! ^spootnik.reporter.SentrySink reporter {:message "A simple test event"})
       (is (= "A simple test event" (:message (first @http-requests-payload-stub))))
 
       (component/stop reporter))))
