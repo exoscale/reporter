@@ -74,6 +74,53 @@
   [_]
   (throw (ex-info "Cannot build riemann client for invalid protocol" {})))
 
+(defn- build-metrics-reporter-dispatch-fn [_ _ [k _]]
+  (info "building" k "reporter!")
+  k)
+
+(defmulti build-metrics-reporter build-metrics-reporter-dispatch-fn)
+
+(defmethod build-metrics-reporter :console [reg _ [_ {:keys [opts interval]}]]
+  (let [r (console/reporter reg opts)]
+    (reify
+      c/Lifecycle
+      (start [this] (console/start r interval) this)
+      (stop [this]
+        (info "scheduling a final console report")
+        (.report r)
+        (console/stop r)
+        this))))
+
+(defmethod build-metrics-reporter :jmx [reg _ [_ {:keys [opts interval]}]]
+  (let [r (jmx/reporter reg opts)]
+    (reify
+      c/Lifecycle
+      (start [this] (jmx/start r) this)
+      (stop [this]  (jmx/stop r) this))))
+
+(defmethod build-metrics-reporter :graphite [reg _ [_ {:keys [opts interval]}]]
+  (let [r (graphite/reporter reg opts)]
+    (reify
+      c/Lifecycle
+      (start [this] (graphite/start r interval) this)
+      (stop [this]  (graphite/stop r) this))))
+
+(defmethod build-metrics-reporter :riemann [reg rclient [_ {:keys [opts interval]}]]
+  (if-not rclient
+    (throw (ex-info "need a valid riemann client to build reporter" {}))
+    (let [r (riemann/reporter rclient reg opts)]
+      (reify
+        c/Lifecycle
+        (start [this] (riemann/start r interval) this)
+        (stop [this]
+          (info "scheduling a final report of our metrics")
+          (.report ^ScheduledReporter r)
+          (riemann/stop r)
+          this)))))
+
+(defmethod build-metrics-reporter :default [_ _ [k _]]
+  (throw (ex-info "Cannot build requested metrics reporter" {:reporter-key k})))
+
 (defn ^RiemannClient riemann-client
   "To keep dependency conflicts, let's use RiemannClient directly."
   [{:keys [batch] :as opts}]
@@ -124,44 +171,7 @@
 (defn build-metrics-reporters
   [reg reporters rclient]
   (info "building metrics reporters")
-  (vec
-   (for [[k {:keys [opts interval]}] reporters]
-     (case k
-       :console (let [r (console/reporter reg opts)]
-                  (info "building console reporter")
-                  (reify
-                    c/Lifecycle
-                    (start [this] (console/start r interval) this)
-                    (stop [this]
-                      (info "scheduling a final console report")
-                      (.report r)
-                      (console/stop r)
-                      this)))
-       :jmx      (let [r (jmx/reporter reg opts)]
-                   (info "building jmx reporter")
-                   (reify
-                     c/Lifecycle
-                     (start [this] (jmx/start r) this)
-                     (stop [this]  (jmx/stop r) this)))
-       :graphite (let [r (graphite/reporter reg opts)]
-                   (info "building graphite reporter")
-                   (reify
-                     c/Lifecycle
-                     (start [this] (graphite/start r interval) this)
-                     (stop [this]  (graphite/stop r) this)))
-       :riemann   (if-not rclient
-                    (throw (ex-info "need a valid riemann client to build reporter" {}))
-                    (let [r (riemann/reporter rclient reg opts)]
-                      (info "building riemann reporter")
-                      (reify
-                        c/Lifecycle
-                        (start [this] (riemann/start r interval) this)
-                        (stop [this]
-                          (info "scheduling a final report of our metrics")
-                          (.report ^ScheduledReporter r)
-                          (riemann/stop r)
-                          this))))
-       (throw (ex-info "invalid metrics reporter" {}))))))
+  (mapv (partial build-metrics-reporter reg rclient) reporters))
 
 (defn build-metrics
   [{:keys [reporters]} rclient]
