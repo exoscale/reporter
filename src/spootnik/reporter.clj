@@ -6,6 +6,7 @@
             [metrics.reporters.jmx      :as jmx]
             [metrics.reporters.graphite :as graphite]
             [metrics.reporters.riemann  :as riemann]
+            [spootnik.log-reporter      :as logs]
             [metrics.jvm.core           :as jvm]
             [metrics.core               :as m]
             [metrics.gauges             :as gge]
@@ -89,6 +90,17 @@
         (info "scheduling a final console report")
         (.report r)
         (console/stop r)
+        this))))
+
+(defmethod build-metrics-reporter :logs [reg _ [_ {:keys [opts interval]}]]
+  (let [r (logs/reporter reg opts)]
+    (reify
+      c/Lifecycle
+      (start [this] (logs/start r interval) this)
+      (stop [this]
+        (info "scheduling a final console report")
+        (.report r)
+        (logs/stop r)
         this))))
 
 (defmethod build-metrics-reporter :jmx [reg _ [_ {:keys [opts interval]}]]
