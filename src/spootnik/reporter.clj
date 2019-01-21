@@ -1,7 +1,7 @@
 (ns spootnik.reporter
   (:require [com.stuartsierra.component :as c]
             [clojure.spec.alpha         :as s]
-            [raven.client               :as raven]
+            [sentry-clj.core            :as sentry]
             [metrics.reporters.console  :as console]
             [metrics.reporters.jmx      :as jmx]
             [metrics.reporters.graphite :as graphite]
@@ -32,7 +32,7 @@
   (send! [this e]))
 
 (defprotocol SentrySink
-  (capture! [this e] [this e tags]))
+  (capture! [this ev]))
 
 (defprotocol MetricHolder
   (instrument! [this prefix])
@@ -155,7 +155,7 @@
         state (or (:state defaults) (:state ev))
         time  ^Long (or time (quot (System/currentTimeMillis) 1000))]
     (-> (.event client)
-        (.host (or host (:host defaults) (raven/localhost)))
+        (.host (or host (:host defaults)))
         (.service (or service (:service defaults) "<none>"))
         (.time (long time))
         (cond-> metric      (.metric metric)
@@ -200,22 +200,18 @@
     (name v)))
 
 ;; "sentry" is a sentry map like {:dsn "..."}
-;; "raven-options" is the options map sent to raven http client
 ;; http://aleph.io/codox/aleph/aleph.http.html#var-request
-(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture?]
+(defrecord Reporter [rclient reporters registry sentry metrics riemann prevent-capture?]
   c/Lifecycle
   (start [this]
     (let [rclient    (when riemann (riemann-client riemann))
-          [reg reps] (build-metrics metrics rclient)
-          options    (when sentry (or raven-options {}))]
-      (when-not prevent-capture?
-        (with-uncaught e
-          (capture! (assoc this :raven-options options) e)))
+          [reg reps] (build-metrics metrics rclient)]
+      (when-let [dsn (:dsn sentry)]
+        (sentry/init! dsn))
       (assoc this
              :registry      reg
              :reporters     reps
-             :rclient       rclient
-             :raven-options options)))
+             :rclient       rclient)))
   (stop [this]
     (when-not prevent-capture?
       (with-uncaught e
@@ -229,7 +225,7 @@
       (try
         (.close ^RiemannClient rclient)
         (catch Exception _)))
-    (assoc this :raven-options nil :reporters nil :registry nil :rclient nil))
+    (assoc this :reporters nil :registry nil :rclient nil))
   MetricHolder
   (instrument! [this prefix]
     (when registry
@@ -286,12 +282,11 @@
     (when registry
       (tmr/stop (tmr/timer registry (->alias alias)))))
   SentrySink
-  (capture! [this e]
-    (capture! this e {}))
-  (capture! [this e tags]
-    (when (:dsn sentry)
-      (let [event-id (raven/capture! raven-options (:dsn sentry) e tags)]
-        (error e (str "captured exception as sentry event: " event-id)))))
+  (capture! [this ev]
+    (when-let [dsn (:dsn sentry)]
+      (let [event       (if (instance? Throwable ev) {:throwable ev} ev)
+            event-id (sentry/send-event event)]
+        (error (:throwable event) (str "captured exception as sentry event: " event-id)))))
   RiemannSink
   (send! [this ev]
     (when rclient
@@ -326,7 +321,7 @@
   (start! [this alias])
   (stop! [this alias])
   SentrySink
-  (capture! ([this e]) ([this e tags]))
+  (capture! ([this ev]))
   RiemannSink
   (send! [this ev]))
 
