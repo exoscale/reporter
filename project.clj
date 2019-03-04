@@ -4,8 +4,8 @@
   :license {:name "MIT/ISC"}
   :profiles {:dev {:global-vars    {*warn-on-reflection* true}
                    :resource-paths ["test/resources"]
-                   :dependencies   [[org.slf4j/slf4j-api        "1.7.25"]
-                                    [org.slf4j/slf4j-log4j12    "1.7.25"]
+                   :dependencies   [[org.slf4j/slf4j-api        "1.7.26"]
+                                    [org.slf4j/slf4j-log4j12    "1.7.26"]
                                     [org.clojure/tools.logging  "0.4.1"]]}}
   :dependencies [[org.clojure/clojure        "1.10.0"]
                  [org.clojure/tools.logging  "0.4.1"]
