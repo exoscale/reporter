@@ -1,6 +1,9 @@
 reporter: event, errors and metric reporting component
 ======================================================
 
+[![Build Status](https://travis-ci.com/exoscale/reporter.svg?branch=master)](https://travis-ci.com/exoscale/reporter)
+[![Clojars Project](https://img.shields.io/clojars/v/exoscale/reporter.svg)](https://clojars.org/exoscale/reporter)
+
 The reporter component makes it easy to wire-in support for
 the following in your components:
 
