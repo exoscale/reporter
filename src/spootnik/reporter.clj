@@ -284,7 +284,7 @@
       (tmr/start (tmr/timer registry (->alias alias)))))
   (stop! [this ctx]
     (when registry
-      (tmr/stop (tmr/timer registry ctx))))
+      (tmr/stop ctx)))
   SentrySink
   (capture! [this e]
     (capture! this e {}))
