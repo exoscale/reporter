@@ -43,7 +43,7 @@
   (update! [this alias v])
   (time-fn! [this alias f])
   (start! [this alias])
-  (stop! [this alias]))
+  (stop! [this ctx]))
 
 (def config->protocol
   (comp keyword
@@ -282,9 +282,9 @@
   (start! [this alias]
     (when registry
       (tmr/start (tmr/timer registry (->alias alias)))))
-  (stop! [this alias]
+  (stop! [this ctx]
     (when registry
-      (tmr/stop (tmr/timer registry (->alias alias)))))
+      (tmr/stop (tmr/timer registry ctx))))
   SentrySink
   (capture! [this e]
     (capture! this e {}))
@@ -324,7 +324,7 @@
   (update! [this alias v])
   (time-fn! [this alias f] (f))
   (start! [this alias])
-  (stop! [this alias])
+  (stop! [this ctx])
   SentrySink
   (capture! ([this e]) ([this e tags]))
   RiemannSink
