@@ -15,6 +15,14 @@
 
     (component/stop reporter)))
 
+(deftest prometheus-exporter-test
+  (let [reporter (component/start (map->Reporter {:metrics {:reporters {:prometheus {}}}}))]
+
+    (time! reporter [:timer :promtest] (+ 1 2))
+    (let [metrics (prometheus-str-metrics)]
+      (is (.contains ^String metrics "TYPE timer_promtest summary")))
+    (component/stop reporter)))
+
 (deftest sentry-sends-events
   (testing "we can send events to sentry using the :memory: backend"
     (let [reporter (component/start (map->Reporter {:sentry {:dsn ":memory:"}

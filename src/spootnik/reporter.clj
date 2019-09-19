@@ -24,6 +24,11 @@
            com.aphyr.riemann.client.EventDSL
            com.aphyr.riemann.client.IPromise
            com.codahale.metrics.ScheduledReporter
+           io.prometheus.client.CollectorRegistry
+           io.prometheus.client.dropwizard.DropwizardExports
+           io.prometheus.client.exporter.common.TextFormat
+           io.prometheus.client.hotspot.DefaultExports
+           java.io.StringWriter
            java.util.concurrent.TimeUnit
            java.util.List
            java.util.Map))
@@ -129,6 +134,17 @@
           (.report ^ScheduledReporter r)
           (riemann/stop r)
           this)))))
+
+(defmethod build-metrics-reporter :prometheus [reg _ _]
+  (reify
+    c/Lifecycle
+    (start [this]
+      (info "start prometheus reporter")
+      (let [exporter (DropwizardExports. reg)]
+        (.register CollectorRegistry/defaultRegistry exporter)
+        (DefaultExports/initialize)
+        this))
+    (stop [this])))
 
 (defmethod build-metrics-reporter :default [_ _ [k _]]
   (throw (ex-info "Cannot build requested metrics reporter" {:reporter-key k})))
@@ -314,6 +330,16 @@
   ([reporter]
    (map->Reporter reporter)))
 
+(defn prometheus-str-metrics
+  "Extracts and returns as string the metrics from the Prometheus default
+  registry"
+  []
+  (let [writer (StringWriter.)]
+    (TextFormat/write004
+     writer
+     (.metricFamilySamples CollectorRegistry/defaultRegistry))
+    (.toString writer)))
+
 (extend-type nil
   MetricHolder
   (instrument! [this prefix])
@@ -354,7 +380,7 @@
 (s/def ::opts map?)
 (s/def ::interval pos-int?)
 (s/def ::reporter-config (s/keys :req-un [] :opt-un [::interval ::opts]))
-(s/def ::reporters (s/map-of #{:graphite :riemann :console :jmx} ::reporter-config))
+(s/def ::reporters (s/map-of #{:graphite :prometheus :riemann :console :jmx} ::reporter-config))
 (s/def ::metrics (s/keys :req-un [::reporters]))
 
 (s/def ::sentry (s/keys :req-un [::dsn]))
