@@ -21,6 +21,10 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 0.1.40
+
+- Prometheus output
+
 #### 0.1.39
 
 - Fix 0.1.38
