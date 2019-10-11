@@ -305,9 +305,10 @@
   (capture! [this e]
     (capture! this e {}))
   (capture! [this e tags]
-    (when (:dsn sentry)
+    (if (:dsn sentry)
       (let [event-id (raven/capture! raven-options (:dsn sentry) e tags)]
-        (error e (str "captured exception as sentry event: " event-id)))))
+        (error e (str "captured exception as sentry event: " event-id)))
+      (error e)))
   RiemannSink
   (send! [this ev]
     (when rclient
