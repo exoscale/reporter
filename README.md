@@ -16,7 +16,7 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.39"]
+[exoscale/reporter "0.1.40"]
 ```
 
 ### Changelog
@@ -24,6 +24,7 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 #### 0.1.40
 
 - Prometheus output
+- Log exceptions in `capture!` even if the sentry dsn is not configured.
 
 #### 0.1.39
 
