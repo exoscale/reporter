@@ -7,6 +7,8 @@
                    :dependencies   [[org.slf4j/slf4j-api        "1.7.26"]
                                     [org.slf4j/slf4j-log4j12    "1.7.26"]
                                     [org.clojure/tools.logging  "0.4.1"]]}}
+  :deploy-repositories [["releases" :clojars]
+                        ["snapshots" :clojars]]
   :dependencies [[org.clojure/clojure                   "1.10.0"]
                  [org.clojure/tools.logging             "0.4.1"]
                  [com.stuartsierra/component            "0.4.0"]
