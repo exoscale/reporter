@@ -21,6 +21,10 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 0.1.41
+
+- A reporter instance is now available in the `spootnik.reporter` namespace.
+
 #### 0.1.40
 
 - Prometheus output
