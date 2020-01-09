@@ -107,7 +107,13 @@ as an argument to `schema.core/validate` or use the handy function `spootnik.rep
 
 ### Using
 
-Once the component has been started, you can use the following signatures:
+Start the component with
+
+```clojure
+(spootnik.reporter/initialize! reporter-config)
+```
+
+Once started, the `spootnik.reporter/reporter` variable will contain your component. You can then use the following signatures:
 
 ```clojure
 (defprotocol RiemannSink
@@ -127,6 +133,8 @@ Once the component has been started, you can use the following signatures:
   (start! [this alias])
   (stop! [this alias]))
 ```
+
+The `spootnik.reporter` namespace contains helper functions to interact with the reporter instance.
 
 ### Redistribution
 
