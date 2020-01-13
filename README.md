@@ -10,16 +10,21 @@ the following in your components:
 - Event reporting to [riemann](http://riemann.io)
 - Metric reporting with [metrics](http://metrics.dropwizard.io/3.1.0/) with support for JMX, Riemann and Console output
 - Error captures to [sentry](https://getsentry.com/welcome/)
+- Expose prometheus metrics via HTTP
 
 Reporter provides a [component](https://github.com/stuartsierra/component) in order to be declared as a dependency in other components.
 
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.40"]
+[exoscale/reporter "0.1.42"]
 ```
 
 ### Changelog
+
+#### 0.1.42
+
+- Add embedded HTTP server for prometheus metrics
 
 #### 0.1.41
 
@@ -102,6 +107,26 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 - Make uncaught exception handler optional.
 - Start a registry, even with no reporters configured.
+
+#### Version 0.1.10
+
+- Improve default configuration
+
+#### Version 0.1.9
+
+- When tags are provided ensure that they are as a seq
+
+#### Version 0.1.8
+
+- Implement the protocol for nil
+
+#### Version 0.1.7
+
+- Allow TLS connections in the riemann client
+
+#### Version 0.1.6
+
+- Send raven captures for uncaught exceptions.
 
 ### Configuring
 
