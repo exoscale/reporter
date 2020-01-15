@@ -81,19 +81,19 @@
 (deftest prometheus-tls-auth
   (let [port       sample-port
         prometheus {:prometheus {:port port
-                                 :ssl  {:pkey    (->resource "server.key")
+                                 :tls  {:pkey    (->resource "server.key")
                                         :cert    (->resource "server.crt")
                                         :ca-cert (->resource "ca.crt")}}
                     :metrics    {:reporters {:prometheus {}}}}
         system     (map->Reporter prometheus)
         reporter   (component/start system)]
-    (testing "with ssl configured, a request with valid certs should succeed"
+    (testing "with tls configured, a request with valid certs should succeed"
       (is (= 200
              (:status @(http/get (format "https://localhost:%s/metrics" port)
                                  {:pool (http/connection-pool
                                          {:connection-options
                                           {:ssl-context client-context}})})))))
-    (testing "with ssl configured, a request without valid certs should fail"
+    (testing "with tls configured, a request without valid certs should fail"
       (is (thrown?
            clojure.lang.ExceptionInfo
            @(http/get (format "https://localhost:%s/metrics" port)))))

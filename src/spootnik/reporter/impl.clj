@@ -258,11 +258,11 @@
           [reg reps]          (build-metrics metrics rclient prometheus-registry)
           options             (when sentry (or raven-options {}))
           prometheus-server   (when prometheus
-                                (let [ssl (:ssl prometheus)
+                                (let [tls (:tls prometheus)
                                       opts (cond->
                                             {:port (:port prometheus)}
-                                             (some? (:ssl prometheus))
-                                             (assoc :ssl-context (ssl-context ssl)))]
+                                             (some? (:tls prometheus))
+                                             (assoc :ssl-context (ssl-context tls)))]
                                   (http/start-server
                                    (partial prometheus-handler
                                             prometheus
@@ -420,7 +420,6 @@
 (s/def ::defaults any?)
 (s/def ::tls ::ssl-cert)
 
-(s/def ::ssl (s/keys :req-un [::pkey ::cert ::ca-cert]))
 (s/def ::endpoint
   (s/and string?
          #(clojure.string/starts-with? % "/")))
@@ -435,7 +434,7 @@
 
 (s/def ::sentry (s/keys :req-un [::dsn]))
 (s/def ::prometheus (s/keys :req-un [::port]
-                            :opt-un [::ssl
+                            :opt-un [::tls
                                      ::endpoint]))
 (s/def ::config (s/keys :req-un []
                         :opt-un [::prevent-capture?
