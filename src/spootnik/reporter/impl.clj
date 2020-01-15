@@ -35,7 +35,8 @@
            java.io.StringWriter
            java.util.concurrent.TimeUnit
            java.util.List
-           java.util.Map))
+           java.util.Map
+           java.net.InetSocketAddress))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -262,7 +263,12 @@
                                       opts (cond->
                                             {:port (:port prometheus)}
                                              (some? (:tls prometheus))
-                                             (assoc :ssl-context (ssl-context tls)))]
+                                             (assoc :ssl-context (ssl-context tls))
+                                             (:host prometheus)
+                                             (assoc :socket-address
+                                                    (InetSocketAddress.
+                                                     (:host prometheus)
+                                                     (:port prometheus))))]
                                   (http/start-server
                                    (partial prometheus-handler
                                             prometheus
@@ -435,7 +441,8 @@
 (s/def ::sentry (s/keys :req-un [::dsn]))
 (s/def ::prometheus (s/keys :req-un [::port]
                             :opt-un [::tls
-                                     ::endpoint]))
+                                     ::endpoint
+                                     ::host]))
 (s/def ::config (s/keys :req-un []
                         :opt-un [::prevent-capture?
                                  ::sentry
