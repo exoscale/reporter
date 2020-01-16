@@ -41,9 +41,8 @@
         jvm-help "# HELP jvm_threads_current Current thread count of a JVM"]
     (Thread/sleep 5000)
     (testing (str "metrics served on port " port)
-      (let [res  @(http/get (format "http://localhost:%s/metrics" port))
-            body (:body (update res :body bs/to-string))]
-        (is (str/includes? body jvm-help))))
+      (let [res @(http/get (format "http://localhost:%s/metrics" port))]
+        (is (some-> res :body bs/to-string (str/includes? jvm-help)))))
     (component/stop reporter)))
 
 (deftest prometheus-native-metrics-test
