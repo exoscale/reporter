@@ -282,8 +282,8 @@
                      :reporters     reps
                      :rclient       rclient
                      :raven-options options)
-        prometheus (assoc :prometheus (atom {:server   prometheus-server
-                                             :registry prometheus-registry})))))
+        prometheus (assoc :prometheus {:server   prometheus-server
+                                       :registry prometheus-registry}))))
   (stop [this]
     (when-not prevent-capture?
       (with-uncaught e
@@ -298,7 +298,7 @@
         (.close ^RiemannClient rclient)
         (catch Exception _)))
     (when prometheus
-      (.close ^java.io.Closeable (:server @prometheus)))
+      (.close ^java.io.Closeable (:server prometheus)))
     (assoc this
            :raven-options nil
            :reporters nil

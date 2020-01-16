@@ -52,19 +52,19 @@
         reporter (component/start system)
         store    (:prometheus reporter)
         _        (prometheus/init-defaults)
-        _        (reset! store (prometheus/register-counter
-                                @store
-                                "test"
-                                "native_counter"
-                                "do you even increment?"
-                                ["test"]))]
-    (prometheus/increase-counter @store "test" "native_counter" ["test"] 42)
+        store    (prometheus/register-counter
+                  store
+                  "test"
+                  "native_counter"
+                  "do you even increment?"
+                  ["test"])]
+    (prometheus/increase-counter store "test" "native_counter" ["test"] 42)
     (let [metrics (prometheus-str-metrics)]
       (testing "store a native prometheus metric in the registry"
         (is (str/includes? metrics "do you even increment?")))
       (testing "increment a native counter and retreive the result"
         (is (str/includes? metrics "test_native_counter{test=\"test\",} 42.0"))))
-    (.clear ^CollectorRegistry (:registry @store))
+    (.clear ^CollectorRegistry (:registry store))
     (component/stop reporter)))
 
 (defn ->resource
