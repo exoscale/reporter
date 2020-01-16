@@ -4,15 +4,18 @@
   :license {:name "MIT/ISC"}
   :profiles {:dev {:global-vars    {*warn-on-reflection* true}
                    :resource-paths ["test/resources"]
-                   :dependencies   [[org.slf4j/slf4j-api        "1.7.26"]
-                                    [org.slf4j/slf4j-log4j12    "1.7.26"]
-                                    [org.clojure/tools.logging  "0.4.1"]]}}
+                   :dependencies   [[com.soundcloud/prometheus-clj "2.4.1"]
+                                    [org.slf4j/slf4j-api           "1.7.26"]
+                                    [org.slf4j/slf4j-log4j12       "1.7.26"]
+                                    [org.clojure/tools.logging     "0.4.1"]]}}
   :deploy-repositories [["releases" :clojars]
                         ["snapshots" :clojars]]
-  :dependencies [[org.clojure/clojure                   "1.10.0"]
+  :dependencies [[aleph                                 "0.4.6"]
+                 [org.clojure/clojure                   "1.10.1"]
                  [org.clojure/tools.logging             "0.4.1"]
                  [com.stuartsierra/component            "0.4.0"]
-                 [exoscale/raven                        "0.4.8"]
+                 [exoscale/raven                        "0.4.8"
+                  :exclusions [org.clojure/tools.reader]]
                  [spootnik/uncaught                     "0.5.5"]
                  [metrics-clojure                       "2.10.0"]
                  [metrics-clojure-riemann               "2.10.0"]

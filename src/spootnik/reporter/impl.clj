@@ -1,5 +1,7 @@
 (ns spootnik.reporter.impl
-  (:require [com.stuartsierra.component :as c]
+  (:require [aleph.http                 :as http]
+            [clojure.java.io :as io]
+            [com.stuartsierra.component :as c]
             [clojure.spec.alpha         :as s]
             [raven.client               :as raven]
             [metrics.reporters.console  :as console]
@@ -24,6 +26,8 @@
            com.aphyr.riemann.client.EventDSL
            com.aphyr.riemann.client.IPromise
            com.codahale.metrics.ScheduledReporter
+           io.netty.handler.ssl.ClientAuth
+           io.netty.handler.ssl.SslContextBuilder
            io.prometheus.client.CollectorRegistry
            io.prometheus.client.dropwizard.DropwizardExports
            io.prometheus.client.exporter.common.TextFormat
@@ -31,7 +35,8 @@
            java.io.StringWriter
            java.util.concurrent.TimeUnit
            java.util.List
-           java.util.Map))
+           java.util.Map
+           java.net.InetSocketAddress))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -80,13 +85,13 @@
   [_]
   (throw (ex-info "Cannot build riemann client for invalid protocol" {})))
 
-(defn- build-metrics-reporter-dispatch-fn [_ _ [k _]]
+(defn- build-metrics-reporter-dispatch-fn [_ _ _ [k _]]
   (info "building" k "reporter!")
   k)
 
 (defmulti build-metrics-reporter build-metrics-reporter-dispatch-fn)
 
-(defmethod build-metrics-reporter :console [reg _ [_ {:keys [opts interval]}]]
+(defmethod build-metrics-reporter :console [reg _ _ [_ {:keys [opts interval]}]]
   (let [r (console/reporter reg opts)]
     (reify
       c/Lifecycle
@@ -97,7 +102,7 @@
         (console/stop r)
         this))))
 
-(defmethod build-metrics-reporter :logs [reg _ [_ {:keys [opts interval]}]]
+(defmethod build-metrics-reporter :logs [reg _ _ [_ {:keys [opts interval]}]]
   (let [r (logs/reporter reg opts)]
     (reify
       c/Lifecycle
@@ -108,21 +113,21 @@
         (logs/stop r)
         this))))
 
-(defmethod build-metrics-reporter :jmx [reg _ [_ {:keys [opts interval]}]]
+(defmethod build-metrics-reporter :jmx [reg _ _ [_ {:keys [opts interval]}]]
   (let [r (jmx/reporter reg opts)]
     (reify
       c/Lifecycle
       (start [this] (jmx/start r) this)
       (stop [this]  (jmx/stop r) this))))
 
-(defmethod build-metrics-reporter :graphite [reg _ [_ {:keys [opts interval]}]]
+(defmethod build-metrics-reporter :graphite [reg _ _ [_ {:keys [opts interval]}]]
   (let [r (graphite/reporter reg opts)]
     (reify
       c/Lifecycle
       (start [this] (graphite/start r interval) this)
       (stop [this]  (graphite/stop r) this))))
 
-(defmethod build-metrics-reporter :riemann [reg rclient [_ {:keys [opts interval]}]]
+(defmethod build-metrics-reporter :riemann [reg rclient _ [_ {:keys [opts interval]}]]
   (if-not rclient
     (throw (ex-info "need a valid riemann client to build reporter" {}))
     (let [r (riemann/reporter rclient reg opts)]
@@ -135,18 +140,18 @@
           (riemann/stop r)
           this)))))
 
-(defmethod build-metrics-reporter :prometheus [reg _ _]
+(defmethod build-metrics-reporter :prometheus [reg _ ^CollectorRegistry prometheus-registry _]
   (reify
     c/Lifecycle
     (start [this]
       (info "start prometheus reporter")
       (let [exporter (DropwizardExports. reg)]
-        (.register CollectorRegistry/defaultRegistry exporter)
+        (.register prometheus-registry exporter)
         (DefaultExports/initialize)
         this))
     (stop [this])))
 
-(defmethod build-metrics-reporter :default [_ _ [k _]]
+(defmethod build-metrics-reporter :default [_ _ _ [k _]]
   (throw (ex-info "Cannot build requested metrics reporter" {:reporter-key k})))
 
 (defn ^RiemannClient riemann-client
@@ -197,14 +202,14 @@
          (deref'))))
 
 (defn build-metrics-reporters
-  [reg reporters rclient]
+  [reg reporters rclient ^CollectorRegistry prometheus-registry]
   (info "building metrics reporters")
-  (mapv (partial build-metrics-reporter reg rclient) reporters))
+  (mapv (partial build-metrics-reporter reg rclient prometheus-registry) reporters))
 
 (defn build-metrics
-  [{:keys [reporters]} rclient]
+  [{:keys [reporters]} rclient ^CollectorRegistry prometheus-registry]
   (let [reg  (m/new-registry)
-        reps (build-metrics-reporters reg reporters rclient)]
+        reps (build-metrics-reporters reg reporters rclient prometheus-registry)]
     (doseq [r reps]
       (c/start r))
     [reg reps]))
@@ -215,23 +220,70 @@
     (map name v)
     (name v)))
 
+(defn prometheus-str-metrics
+  "Extracts and returns as string metrics from a Prometheus registry.
+  Defaults to the defaultRegistry if no registry is provided."
+  ([]
+   (prometheus-str-metrics CollectorRegistry/defaultRegistry))
+  ([^CollectorRegistry registry]
+   (let [writer (StringWriter.)]
+     (TextFormat/write004
+      writer
+      (.metricFamilySamples registry))
+     (.toString writer))))
+
+(defn prometheus-handler
+  [prometheus ^CollectorRegistry prometheus-registry req]
+  (if (and (:endpoint prometheus)
+           (not= (:uri req) (:endpoint prometheus)))
+    {:status 404}
+    {:status 200
+     :headers {"Content-Type" TextFormat/CONTENT_TYPE_004}
+     :body (prometheus-str-metrics prometheus-registry)}))
+
+(defn ssl-context
+  [{:keys [pkey cert ca-cert]}]
+  (-> (SslContextBuilder/forServer (io/file cert) (io/file pkey))
+      (.trustManager (io/file ca-cert))
+      (.clientAuth ClientAuth/REQUIRE)
+      (.build)))
+
 ;; "sentry" is a sentry map like {:dsn "..."}
 ;; "raven-options" is the options map sent to raven http client
 ;; http://aleph.io/codox/aleph/aleph.http.html#var-request
-(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture?]
+(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture? prometheus]
   c/Lifecycle
   (start [this]
-    (let [rclient    (when riemann (riemann-client riemann))
-          [reg reps] (build-metrics metrics rclient)
-          options    (when sentry (or raven-options {}))]
+    (let [prometheus-registry (CollectorRegistry/defaultRegistry)
+          rclient             (when riemann (riemann-client riemann))
+          [reg reps]          (build-metrics metrics rclient prometheus-registry)
+          options             (when sentry (or raven-options {}))
+          prometheus-server   (when prometheus
+                                (let [tls (:tls prometheus)
+                                      opts (cond->
+                                            {:port (:port prometheus)}
+                                             (some? (:tls prometheus))
+                                             (assoc :ssl-context (ssl-context tls))
+                                             (:host prometheus)
+                                             (assoc :socket-address
+                                                    (InetSocketAddress.
+                                                     (:host prometheus)
+                                                     (:port prometheus))))]
+                                  (http/start-server
+                                   (partial prometheus-handler
+                                            prometheus
+                                            prometheus-registry)
+                                   opts)))]
       (when-not prevent-capture?
         (with-uncaught e
           (capture! (assoc this :raven-options options) e)))
-      (assoc this
-             :registry      reg
-             :reporters     reps
-             :rclient       rclient
-             :raven-options options)))
+      (cond-> (assoc this
+                     :registry      reg
+                     :reporters     reps
+                     :rclient       rclient
+                     :raven-options options)
+        prometheus (assoc :prometheus {:server   prometheus-server
+                                       :registry prometheus-registry}))))
   (stop [this]
     (when-not prevent-capture?
       (with-uncaught e
@@ -245,7 +297,14 @@
       (try
         (.close ^RiemannClient rclient)
         (catch Exception _)))
-    (assoc this :raven-options nil :reporters nil :registry nil :rclient nil))
+    (when prometheus
+      (.close ^java.io.Closeable (:server prometheus)))
+    (assoc this
+           :raven-options nil
+           :reporters nil
+           :registry nil
+           :rclient nil
+           :prometheus nil))
   MetricHolder
   (instrument! [this prefix]
     (when registry
@@ -331,16 +390,6 @@
   ([reporter]
    (map->Reporter reporter)))
 
-(defn prometheus-str-metrics
-  "Extracts and returns as string the metrics from the Prometheus default
-  registry"
-  []
-  (let [writer (StringWriter.)]
-    (TextFormat/write004
-     writer
-     (.metricFamilySamples CollectorRegistry/defaultRegistry))
-    (.toString writer)))
-
 (extend-type nil
   MetricHolder
   (instrument! [this prefix])
@@ -361,6 +410,7 @@
 (s/def ::password string?)
 (s/def ::ssl-bundle (s/keys :req-un [::bundle ::password]))
 (s/def ::cert string?)
+(s/def ::ca-cert string?)
 (s/def ::authority string?)
 (s/def ::pkey string?)
 (s/def ::ssl-cert (s/keys :req-un [::cert ::authority ::pkey]))
@@ -376,6 +426,10 @@
 (s/def ::defaults any?)
 (s/def ::tls ::ssl-cert)
 
+(s/def ::endpoint
+  (s/and string?
+         #(clojure.string/starts-with? % "/")))
+
 (s/def ::riemann (s/keys :req-un [::host] :opt-un [::port ::protocol ::batch ::defaults ::tls]))
 
 (s/def ::opts map?)
@@ -385,4 +439,13 @@
 (s/def ::metrics (s/keys :req-un [::reporters]))
 
 (s/def ::sentry (s/keys :req-un [::dsn]))
-(s/def ::config (s/keys :req-un [] :opt-un [::prevent-capture? ::sentry ::metrics ::riemann]))
+(s/def ::prometheus (s/keys :req-un [::port]
+                            :opt-un [::tls
+                                     ::endpoint
+                                     ::host]))
+(s/def ::config (s/keys :req-un []
+                        :opt-un [::prevent-capture?
+                                 ::sentry
+                                 ::metrics
+                                 ::riemann
+                                 ::prometheus]))
