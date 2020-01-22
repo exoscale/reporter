@@ -17,10 +17,14 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 ### Usage
 
 ```clojure
-[exoscale/reporter "0.1.42"]
+[exoscale/reporter "0.1.43"]
 ```
 
 ### Changelog
+
+#### 0.1.43
+
+- Bump prometheus simpleclient to 0.8.0
 
 #### 0.1.42
 
