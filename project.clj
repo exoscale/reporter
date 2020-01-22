@@ -21,7 +21,7 @@
                  [metrics-clojure-riemann               "2.10.0"]
                  [metrics-clojure-jvm                   "2.10.0"]
                  [metrics-clojure-graphite              "2.10.0"]
-                 [io.prometheus/simpleclient            "0.6.0"]
-                 [io.prometheus/simpleclient_common     "0.6.0"]
-                 [io.prometheus/simpleclient_hotspot    "0.6.0"]
-                 [io.prometheus/simpleclient_dropwizard "0.6.0"]])
+                 [io.prometheus/simpleclient            "0.8.0"]
+                 [io.prometheus/simpleclient_common     "0.8.0"]
+                 [io.prometheus/simpleclient_hotspot    "0.8.0"]
+                 [io.prometheus/simpleclient_dropwizard "0.8.0"]])
