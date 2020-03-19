@@ -16,11 +16,13 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Usage
 
-```clojure
-[exoscale/reporter "0.1.43"]
-```
+[![Clojars Project](https://img.shields.io/clojars/v/exoscale/reporter.svg)](https://clojars.org/exoscale/reporter)
 
 ### Changelog
+
+#### 0.1.44
+
+- Mark global reporter as :redef
 
 #### 0.1.43
 
