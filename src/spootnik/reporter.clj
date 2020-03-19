@@ -4,7 +4,7 @@
             [raven.client :as raven]
             [spootnik.reporter.impl :as rptr]))
 
-(def reporter
+(def ^:redef reporter
   "The main reporter instance"
   nil)
 
