@@ -10,12 +10,11 @@
                                     [org.clojure/tools.logging     "0.4.1"]]}}
   :deploy-repositories [["releases" :clojars]
                         ["snapshots" :clojars]]
-  :dependencies [[aleph                                 "0.4.6"]
+  :dependencies [[aleph                                 "0.4.7-alpha5"]
                  [org.clojure/clojure                   "1.10.1"]
-                 [org.clojure/tools.logging             "0.4.1"]
-                 [com.stuartsierra/component            "0.4.0"]
-                 [exoscale/raven                        "0.4.8"
-                  :exclusions [org.clojure/tools.reader]]
+                 [org.clojure/tools.logging             "1.0.0"]
+                 [com.stuartsierra/component            "1.0.0"]
+                 [exoscale/raven                        "0.4.10"]
                  [spootnik/uncaught                     "0.5.5"]
                  [metrics-clojure                       "2.10.0"]
                  [metrics-clojure-riemann               "2.10.0"]
