@@ -1,5 +1,6 @@
 (ns spootnik.reporter.impl
   (:require [aleph.http                 :as http]
+            [manifold.deferred         :as d]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as c]
             [clojure.spec.alpha         :as s]
@@ -365,8 +366,10 @@
     (capture! this e {}))
   (capture! [this e tags]
     (if (:dsn sentry)
-      (let [event-id (raven/capture! raven-options (:dsn sentry) e tags)]
-        (error e (str "captured exception as sentry event: " event-id)))
+      (d/chain
+       (raven/capture! raven-options (:dsn sentry) e tags)
+       (fn [event-id]
+         (error e (str "captured exception as sentry event: " event-id))))
       (error e)))
   RiemannSink
   (send! [this ev]
