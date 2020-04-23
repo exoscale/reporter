@@ -252,60 +252,67 @@
 ;; "sentry" is a sentry map like {:dsn "..."}
 ;; "raven-options" is the options map sent to raven http client
 ;; http://aleph.io/codox/aleph/aleph.http.html#var-request
-(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture? prometheus]
+(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture? prometheus
+                     started?]
   c/Lifecycle
   (start [this]
-    (let [prometheus-registry (CollectorRegistry/defaultRegistry)
-          rclient             (when riemann (riemann-client riemann))
-          [reg reps]          (build-metrics metrics rclient prometheus-registry)
-          options             (when sentry (or raven-options {}))
-          prometheus-server   (when prometheus
-                                (let [tls (:tls prometheus)
-                                      opts (cond->
-                                            {:port (:port prometheus)}
-                                             (some? (:tls prometheus))
-                                             (assoc :ssl-context (ssl-context tls))
-                                             (:host prometheus)
-                                             (assoc :socket-address
-                                                    (InetSocketAddress.
-                                                     (:host prometheus)
-                                                     (:port prometheus))))]
-                                  (http/start-server
-                                   (partial prometheus-handler
-                                            prometheus
-                                            prometheus-registry)
-                                   opts)))]
-      (when-not prevent-capture?
-        (with-uncaught e
-          (capture! (assoc this :raven-options options) e)))
-      (cond-> (assoc this
-                     :registry      reg
-                     :reporters     reps
-                     :rclient       rclient
-                     :raven-options options)
-        prometheus (assoc :prometheus {:server   prometheus-server
-                                       :registry prometheus-registry}))))
+    (if started?
+      this
+      (let [prometheus-registry (CollectorRegistry/defaultRegistry)
+            rclient             (when riemann (riemann-client riemann))
+            [reg reps]          (build-metrics metrics rclient prometheus-registry)
+            options             (when sentry (or raven-options {}))
+            prometheus-server   (when prometheus
+                                  (let [tls (:tls prometheus)
+                                        opts (cond->
+                                                 {:port (:port prometheus)}
+                                               (some? (:tls prometheus))
+                                               (assoc :ssl-context (ssl-context tls))
+                                               (:host prometheus)
+                                               (assoc :socket-address
+                                                      (InetSocketAddress.
+                                                       (:host prometheus)
+                                                       (:port prometheus))))]
+                                    (http/start-server
+                                     (partial prometheus-handler
+                                              prometheus
+                                              prometheus-registry)
+                                     opts)))]
+        (when-not prevent-capture?
+          (with-uncaught e
+            (capture! (assoc this :raven-options options) e)))
+        (cond-> (assoc this
+                       :registry      reg
+                       :reporters     reps
+                       :rclient       rclient
+                       :raven-options options
+                       :started? true)
+          prometheus (assoc :prometheus {:server   prometheus-server
+                                         :registry prometheus-registry})))))
   (stop [this]
-    (when-not prevent-capture?
-      (with-uncaught e
-        (error e "uncaught exception.")))
-    (doseq [r reporters]
-      (c/stop r))
-    (when registry
-      (info "shutting down metric registry")
-      (m/remove-all-metrics registry))
-    (when rclient
-      (try
-        (.close ^RiemannClient rclient)
-        (catch Exception _)))
-    (when prometheus
-      (.close ^java.io.Closeable (:server prometheus)))
-    (assoc this
-           :raven-options nil
-           :reporters nil
-           :registry nil
-           :rclient nil
-           :prometheus nil))
+    (if started?
+      (do
+        (when-not prevent-capture?
+          (with-uncaught e
+            (error e "uncaught exception.")))
+        (doseq [r reporters]
+          (c/stop r))
+        (when registry
+          (info "shutting down metric registry")
+          (m/remove-all-metrics registry))
+        (when rclient
+          (try
+            (.close ^RiemannClient rclient)
+            (catch Exception _)))
+        (when prometheus
+          (.close ^java.io.Closeable (:server prometheus))))
+      (assoc this
+             :raven-options nil
+             :reporters nil
+             :registry nil
+             :rclient nil
+             :prometheus nil
+             :started? false)))
   MetricHolder
   (instrument! [this prefix]
     (when registry
