@@ -290,7 +290,7 @@
           prometheus (assoc :prometheus {:server   prometheus-server
                                          :registry prometheus-registry})))))
   (stop [this]
-    (if (started? rclient)
+    (if started?
       (do
         (when-not prevent-capture?
           (with-uncaught e
@@ -305,15 +305,14 @@
             (.close ^RiemannClient rclient)
             (catch Exception _)))
         (when prometheus
-          (.close ^java.io.Closeable (:server prometheus)))
-        (assoc this
-               :raven-options nil
-               :reporters nil
-               :registry nil
-               :rclient nil
-               :prometheus nil
-               :started? false))
-      this))
+          (.close ^java.io.Closeable (:server prometheus))))
+      (assoc this
+             :raven-options nil
+             :reporters nil
+             :registry nil
+             :rclient nil
+             :prometheus nil
+             :started? false)))
   MetricHolder
   (instrument! [this prefix]
     (when registry
