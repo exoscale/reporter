@@ -2,7 +2,8 @@
   (:require [com.stuartsierra.component :as c]
             [clojure.tools.logging :as log]
             [raven.client :as raven]
-            [spootnik.reporter.impl :as rptr]))
+            [spootnik.reporter.impl :as rptr]
+            [manifold.deferred :as d]))
 
 (def ^:redef reporter
   "The main reporter instance"
@@ -35,8 +36,28 @@
 (def mark!       #(apply rptr/mark! reporter %&))
 
 (defmacro with-time!
+  "Wraps a body with a timer, using `alias` for the name."
   [alias & body]
-  `(time-fn! ~alias (fn [] (do ~@body))))
+  `(let [start# (start! ~alias)]
+     (try
+       ;; if ~@body is not deferred
+       ;; the timer will stop on the 2nd if branch OR on the catch
+       ;; we can't use a finally block for stopping the timer
+       ;; because at that point we don't know if its a deferred or not (We would be stopping deferred timer before the end)
+       ;; if it's a deferred:
+       ;; > exception happened on deferred creation, it is stopped on catch
+       ;; > exception or success happened, it will be stopped on the callbacks
+       (let [out# (do ~@body)]
+         (if (d/deferred? out#)
+           (d/finally out# #(stop! start#))
+           (do
+             (stop! start#)
+             out#)))
+       ;; time-fn has a try/finally which we can't use because of deferred
+       ;; so we emulate it by catching Throwable...
+       (catch Throwable t#
+         (stop! start#)
+         (throw t#)))))
 
 (defn report-error
   "Log and report an error. Extra is a map of extra data."
