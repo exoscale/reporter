@@ -1,4 +1,4 @@
-(ns spootnik.reporter.spec
+(ns spootnik.reporter.config
   (:require [clojure.spec.alpha :as s]))
 
 
