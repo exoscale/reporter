@@ -4,7 +4,7 @@
             [spootnik.reporter.specs]))
 
 (def valid-reporter-config
-  {:sentry {:dsn "https://a02ce81f94ed426588508ffc4f05d999:38f389ed20794158ba1a649c61cd1897@errors.exoscale.ch/104"}
+  {:sentry {:dsn "https://dummy:dsn@errors.sentry-host.com/31337"}
    :prometheus {:port 8007}
    :riemann {:host     "infra-mon-pp001.gv2.p.exoscale.net"
              :port     5554
@@ -38,4 +38,3 @@
 
   (testing "Metrics Reporters set is fixed"
     (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:metrics :reporters] {:foundationdb {}}))))))
-
