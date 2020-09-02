@@ -23,4 +23,5 @@
                  [io.prometheus/simpleclient            "0.8.0"]
                  [io.prometheus/simpleclient_common     "0.8.0"]
                  [io.prometheus/simpleclient_hotspot    "0.8.0"]
-                 [io.prometheus/simpleclient_dropwizard "0.8.0"]])
+                 [io.prometheus/simpleclient_dropwizard "0.8.0"]
+                 [javax.xml.bind/jaxb-api               "2.4.0-b180830.0359"]])
