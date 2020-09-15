@@ -289,29 +289,28 @@
           prometheus (assoc :prometheus {:server   prometheus-server
                                          :registry prometheus-registry})))))
   (stop [this]
-    (if started?
-      (do
-        (when-not prevent-capture?
-          (with-uncaught e
-            (error e "uncaught exception.")))
-        (doseq [r reporters]
-          (c/stop r))
-        (when registry
-          (info "shutting down metric registry")
-          (m/remove-all-metrics registry))
-        (when rclient
-          (try
-            (.close ^RiemannClient rclient)
-            (catch Exception _)))
-        (when prometheus
-          (.close ^java.io.Closeable (:server prometheus))))
-      (assoc this
-             :raven-options nil
-             :reporters nil
-             :registry nil
-             :rclient nil
-             :prometheus nil
-             :started? false)))
+    (when started?
+      (when-not prevent-capture?
+        (with-uncaught e
+          (error e "uncaught exception.")))
+      (doseq [r reporters]
+        (c/stop r))
+      (when registry
+        (info "shutting down metric registry")
+        (m/remove-all-metrics registry))
+      (when rclient
+        (try
+          (.close ^RiemannClient rclient)
+          (catch Exception _)))
+      (when prometheus
+        (.close ^java.io.Closeable (:server prometheus))))
+    (assoc this
+           :raven-options nil
+           :reporters nil
+           :registry nil
+           :rclient nil
+           :prometheus nil
+           :started? false))
   MetricHolder
   (instrument! [this prefix]
     (when registry
