@@ -9,16 +9,26 @@
   "The main reporter instance"
   nil)
 
-(defn inner-start
+(defn- inner-start
   [_ config]
   (c/start
    (rptr/map->Reporter config)))
+
+(defn- inner-stop
+  [val]
+  (when (some? val)
+    (c/stop val)))
 
 (defn initialize!
   "Initialize the root binding in this namespace to a reporter
    component using the provided configuration."
   [config]
   (alter-var-root #'reporter inner-start config))
+
+(defn decommission!
+  "Stop the reporter attached to the namespace's root binding."
+  []
+  (alter-var-root #'reporter inner-stop))
 
 ;;
 ;; Forward reporter functions, providing the current component
