@@ -173,7 +173,7 @@
   (let [tags  (some-> (concat (:tags defaults) (:tags ev)) set seq)
         attrs (merge (:attrs defaults) (:attrs ev))
         ttl   (if-let [t (or (:ttl ev) (:ttl defaults))] (float t))
-        state (or (:state defaults) (:state ev))
+        state (or (:state ev) (:state defaults))
         time  ^Long (or time (quot (System/currentTimeMillis) 1000))]
     (-> (.event client)
         (.host (or host (:host defaults) (raven/localhost)))
