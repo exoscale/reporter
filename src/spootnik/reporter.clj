@@ -73,13 +73,22 @@
 
 (defn report-error
   "Log and report an error. Extra is a map of extra data."
-  [error extra]
-  (try
-    (log/error error)
-    (capture! (-> (if (instance? Exception error)
-                    (-> {:data (ex-data error)}
-                        (raven/add-exception! error))
-                    {:message error})
-                  (raven/add-extra! extra)))
-    (catch Exception e
-      (log/error e "Sentry failure"))))
+
+  ([error]
+   (report-error error {}))
+
+  ([error extra]
+   (log/error error)
+   (-> (capture! (-> (if (instance? Exception error)
+                       (-> {:data (ex-data error)}
+                           (raven/add-exception! error))
+                       {:message error})
+                     (raven/add-extra! extra)))
+
+       (d/catch Throwable
+           (fn [e]
+             (log/error e "Sentry failure")))
+
+       (try
+         (catch Throwable e
+           (log/error e "Sentry failure"))))))
