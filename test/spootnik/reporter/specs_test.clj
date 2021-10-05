@@ -6,6 +6,10 @@
 (def valid-reporter-config
   {:sentry {:dsn "https://dummy:dsn@errors.sentry-host.com/31337"}
    :prometheus {:port 8007}
+   :pushgateway {:host "localhost"
+                 :port 9091
+                 :labels {:job "foo"
+                          :instance "bar"}}
    :riemann {:host     "infra-mon-pp001.gv2.p.exoscale.net"
              :port     5554
              :protocol "tls"
@@ -35,6 +39,9 @@
 
   (testing "Riemann host should not be empty"
     (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:riemann :host] nil)))))
+
+  (testing "PushGateway host should not be empty"
+    (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:pushgateway :host] nil)))))
 
   (testing "Metrics Reporters set is fixed"
     (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:metrics :reporters] {:foundationdb {}}))))))
