@@ -123,3 +123,20 @@
       (is (= "A simple test event" (:message (first @http-requests-payload-stub))))
 
       (component/stop reporter))))
+
+(deftest pushgateway-send-events
+  (testing "Sending events to pushgateway"
+    (let [reporter (component/start (map->Reporter {:metrics {:reporters {:console {:interval 100}}}
+                                                    :pushgateway {:host "localhost"
+                                                                  :job "testing"
+                                                                  :port 9091
+                                                                  :metrics [{:name :foo_counter :help "Lorem Lorem" :type :counter :label-names [:bar :baz]}
+                                                                            {:name :foo_gauge :help "Ipsum Ipsum" :type :gauge :label-names [:bar :baz]}]}}))]
+      (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_gauge
+                                                                 :value 12
+                                                                 :label-values ["bar" "baz"]})
+      (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
+                                                                 :label-values ["bar" "baz"]})
+      (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
+                                                                 :label-values ["bar" "baz"]})
+      (component/stop reporter))))

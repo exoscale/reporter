@@ -7,9 +7,12 @@
   {:sentry {:dsn "https://dummy:dsn@errors.sentry-host.com/31337"}
    :prometheus {:port 8007}
    :pushgateway {:host "localhost"
+                 :job :foo
                  :port 9091
-                 :labels {:job "foo"
-                          :instance "bar"}}
+                 :metrics [{:name :foo-bar 
+                            :type :gauge 
+                            :help "Lorem Ipsum"
+                            :label-names [:foo :bar]}]}
    :riemann {:host     "infra-mon-pp001.gv2.p.exoscale.net"
              :port     5554
              :protocol "tls"
