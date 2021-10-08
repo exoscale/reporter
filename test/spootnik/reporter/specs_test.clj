@@ -13,21 +13,21 @@
                             :type :gauge 
                             :help "Lorem Ipsum"
                             :label-names [:foo :bar]}]}
-   :riemann {:host     "infra-mon-pp001.gv2.p.exoscale.net"
+   :riemann {:host     "riemann.svc"
              :port     5554
              :protocol "tls"
 
              :defaults {:ttl  600
-                        :host "bundes-volumes-preprod.gva2"
-                        :tags ["bundes-volumes" "graph"]}
+                        :host "localhost"
+                        :tags ["cpu" "graph"]}
 
-             :tls {:cert      "/etc/host-certificate/ssl/cert.pem"
-                   :authority "/etc/host-certificate/ssl/ca.pem"
-                   :pkey      "/etc/host-certificate/ssl/key.pkcs8"}}
+             :tls {:cert      "/etc/riemann/ssl/cert.pem"
+                   :authority "/etc/riemann/ssl/ca.pem"
+                   :pkey      "/etc/riemann/ssl/key.pkcs8"}}
    :metrics {:reporters {:riemann {:interval 10
                                    :opts     {:ttl       20
-                                              :tags      ["bundes-volumes" "graph"]
-                                              :host-name "bundes-volumes-preprod.gva2"}}}}})
+                                              :tags      ["cpu" "graph"]
+                                              :host-name "localhost"}}}}})
 
 (deftest reporter-spec-validates-correctly-test
   (testing "A correct spec should be valid"
