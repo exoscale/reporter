@@ -165,13 +165,15 @@
         this))
     (stop [this])))
 
-(defmethod build-metrics-reporter :pushgateway-client [reg _ _ _ [_ _]]
+(defmethod build-metrics-reporter :pushgateway-client [reg _ _ ^CollectorRegistry pushgateway-registry [_ _]]
   (reify
     c/Lifecycle
     (start [this]
-      (info "start pushgateway reporter")
-      this) ;; This is not actually useful, needs to be removed
-    (stop [this])))
+      (info "Starting pushgateway reporter")
+      this)
+    (stop [this]
+      (info "Clearing pushgateway registry")
+      (.clear ^CollectorRegistry pushgateway-registry))))
 
 (defmethod build-metrics-reporter :default [_ _ _ _ [k _]]
   (throw (ex-info "Cannot build requested metrics reporter" {:reporter-key k})))
@@ -338,7 +340,7 @@
                                                                        (register-pushgateway-collector pushgateway-registry)))
                                                (:metrics pushgateway)))
             rclient              (when riemann (riemann-client riemann))
-            [reg reps]           (build-metrics metrics rclient prometheus-registry [pushgateway-registry pushgateway-metrics])
+            [reg reps]           (build-metrics metrics rclient prometheus-registry pushgateway-registry)
             options              (when sentry (or raven-options {}))
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)
@@ -386,9 +388,7 @@
           (.close ^RiemannClient rclient)
           (catch Exception _)))
       (when prometheus
-        (.close ^java.io.Closeable (:server prometheus)))
-      (when pushgateway
-        (.clear ^CollectorRegistry (:registry pushgateway))))
+        (.close ^java.io.Closeable (:server prometheus))))
     (assoc this
            :raven-options nil
            :reporters nil
