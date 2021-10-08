@@ -11,6 +11,7 @@ the following in your components:
 - Metric reporting with [metrics](http://metrics.dropwizard.io/3.1.0/) with support for JMX, Riemann and Console output
 - Error captures to [sentry](https://getsentry.com/welcome/)
 - Expose prometheus metrics via HTTP
+- Send metrics to PushGateway
 
 Reporter provides a [component](https://github.com/stuartsierra/component) in order to be declared as a dependency in other components.
 
@@ -156,6 +157,10 @@ Once started, the `spootnik.reporter/reporter` variable will contain your compon
 
 (defprotocol SentrySink
   (capture! [this e]))
+
+(defprotocol PushGatewaySink
+  (gauge! [this e])
+  (counter! [this e]))
 
 (defprotocol MetricHolder
   (instrument! [this prefix])
