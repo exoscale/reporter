@@ -35,8 +35,8 @@
            io.prometheus.client.hotspot.DefaultExports
            io.prometheus.client.Gauge
            io.prometheus.client.Counter
-           io.prometheus.client.Gauge$Builder
-           io.prometheus.client.Counter$Builder
+           io.prometheus.client.Gauge$Child
+           io.prometheus.client.Counter$Child
            io.prometheus.client.SimpleCollector$Builder
            io.prometheus.client.Collector
            io.prometheus.client.exporter.PushGateway
@@ -322,13 +322,13 @@
 (defn set-gauge!
   [^Gauge gauge {:keys [label-values value]}]
   (-> gauge
-      ^Gauge (.labels (into-array String (map name label-values)))
+      ^Gauge$Child (.labels (into-array String (map name label-values)))
       (.set ^double value)))
 
 (defn inc-counter!
   [^Counter counter {:keys [label-values]}]
   (-> counter
-      ^Counter (.labels (into-array String (map name label-values)))
+      ^Counter$Child (.labels (into-array String (map name label-values)))
       (.inc)))
 
 (defn push-pushgateway-metric!
