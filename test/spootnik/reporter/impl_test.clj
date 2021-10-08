@@ -74,16 +74,16 @@
 
 (def client-context
   (-> (SslContextBuilder/forClient)
-      (.trustManager (->resource "ca.crt"))
-      (.keyManager (->resource "client.crt") (->resource "client.key"))
+      (.trustManager (->resource "ca-cert.pem"))
+      (.keyManager (->resource "client-cert.pem") (->resource "client-key.pem"))
       .build))
 
 (deftest prometheus-tls-auth
   (let [port       sample-port
         prometheus {:prometheus {:port port
-                                 :tls  {:pkey    (->resource "server.key")
-                                        :cert    (->resource "server.crt")
-                                        :ca-cert (->resource "ca.crt")}}
+                                 :tls  {:pkey    (->resource "server-key.pem")
+                                        :cert    (->resource "server-cert.pem")
+                                        :ca-cert (->resource "ca-cert.pem")}}
                     :metrics    {:reporters {:prometheus {}}}}
         system     (map->Reporter prometheus)
         reporter   (component/start system)]
