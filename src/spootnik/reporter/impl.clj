@@ -168,7 +168,7 @@
         this))
     (stop [this])))
 
-(defmethod build-metrics-reporter :pushgateway-client [reg _ _ ^CollectorRegistry pushgateway-registry [_ _]]
+(defmethod build-metrics-reporter :pushgateway [reg _ _ ^CollectorRegistry pushgateway-registry _]
   (reify
     c/Lifecycle
     (start [this]
@@ -229,14 +229,14 @@
          (deref'))))
 
 (defn build-metrics-reporters
-  [reg reporters rclient ^CollectorRegistry prometheus-registry pushgateway-client]
+  [reg reporters rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
   (info "building metrics reporters")
-  (mapv (partial build-metrics-reporter reg rclient prometheus-registry pushgateway-client) reporters))
+  (mapv (partial build-metrics-reporter reg rclient prometheus-registry pushgateway-registry) reporters))
 
 (defn build-metrics
-  [{:keys [reporters]} rclient ^CollectorRegistry prometheus-registry pushgateway-client]
+  [{:keys [reporters] :as opt} rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
   (let [reg  (m/new-registry)
-        reps (build-metrics-reporters reg reporters rclient prometheus-registry pushgateway-client)]
+        reps (build-metrics-reporters reg reporters rclient prometheus-registry pushgateway-registry)]
     (doseq [r reps]
       (c/start r))
     [reg reps]))
@@ -348,7 +348,7 @@
             [pgclient pgjob pgregistry] (when pushgateway [(build-pushgateway-client pushgateway)
                                                            (:job pushgateway)
                                                            (CollectorRegistry.)])
-            pgmetrics            (when pushgateway (build-collectors! pgregistry (:metrics pushgateway)))
+            pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
             rclient              (when riemann (riemann-client riemann))
             [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
             options              (when sentry (or raven-options {}))

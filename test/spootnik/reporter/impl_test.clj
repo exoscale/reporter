@@ -127,12 +127,11 @@
 
 (deftest pushgateway-send-events
   (testing "Sending events to pushgateway"
-    (let [reporter (component/start (map->Reporter {:metrics {:reporters {:console {:interval 100}}}
+    (let [reporter (component/start (map->Reporter {:metrics {:reporters {:pushgateway [{:name :foo_counter :help "Lorem Lorem" :type :counter :label-names [:bar :baz]}
+                                                                                        {:name :foo_gauge :help "Ipsum Ipsum" :type :gauge :label-names [:bar :baz]}]}}
                                                     :pushgateway {:host "localhost"
                                                                   :job "testing"
-                                                                  :port 9091
-                                                                  :metrics [{:name :foo_counter :help "Lorem Lorem" :type :counter :label-names [:bar :baz]}
-                                                                            {:name :foo_gauge :help "Ipsum Ipsum" :type :gauge :label-names [:bar :baz]}]}}))]
+                                                                  :port 9091}}))]
       (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_gauge
                                                                  :value 13
                                                                  :label-values ["bar" "baz"]})
