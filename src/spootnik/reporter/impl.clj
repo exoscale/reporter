@@ -310,9 +310,9 @@
   (let [protocol (if tls "https" "http")
         url (URL. protocol host port "")
         client (PushGateway. url)]
-    (if tls
-      (doto client (.setConnectionFactory (https-connection-factory tls)))
-      client)))
+    (when tls
+      (.setConnectionFactory client (https-connection-factory tls)))
+    client))
 
 (defn build-collectors! [registry metrics]
   (into {} (map (fn [metric] [(:name metric) (-> (build-pushgateway-collector metric)
