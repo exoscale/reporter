@@ -136,7 +136,7 @@
                                                                  :value 12
                                                                  :label-values ["bar" "baz"]})
       (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
-                                                                 :label-values ["bar" "baz"]})
+                                                                   :label-values ["bar" "baz"]})
       (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
-                                                                 :label-values ["bar" "baz"]})
+                                                                   :label-values ["bar" "baz"]})
       (component/stop reporter))))

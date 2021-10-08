@@ -368,7 +368,7 @@
                        :registry      reg
                        :reporters     reps
                        :rclient       rclient
-                       :pg   pg
+                       :pg            pg
                        :raven-options options
                        :started? true)
           prometheus (assoc :prometheus {:server   prometheus-server
