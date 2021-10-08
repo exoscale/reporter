@@ -35,6 +35,9 @@
            io.prometheus.client.hotspot.DefaultExports
            io.prometheus.client.Gauge
            io.prometheus.client.Counter
+           io.prometheus.client.Gauge$Builder
+           io.prometheus.client.Counter$Builder
+           io.prometheus.client.SimpleCollector$Builder
            io.prometheus.client.Collector
            io.prometheus.client.exporter.PushGateway
            io.prometheus.client.exporter.HttpConnectionFactory
@@ -287,15 +290,18 @@
         (doto ^HttpsURLConnection (.openConnection (URL. url))
           (.setSSLSocketFactory  (.getSocketFactory ^SSLContext ssl-context)))))))
 
-(defn build-pushgateway-collector [{:keys [name type  help  label-names]}]
-  (-> (condp = type
-        :gauge (Gauge/build)
-        :counter (Counter/build))
+(defn ^SimpleCollector$Builder collector-builder-of [type]
+  (condp = type
+    :gauge (Gauge/build)
+    :counter (Counter/build)))
+
+(defn ^SimpleCollector$Builder build-pushgateway-collector [{:keys [name type  help  label-names]}]
+  (-> (collector-builder-of type)
       (.name (csk/->snake_case_string name))
       (.help help)
       (.labelNames (into-array String (map csk/->snake_case_string label-names)))))
 
-(defn register-pushgateway-collector [collector registry]
+(defn ^Collector register-pushgateway-collector [^SimpleCollector$Builder collector registry]
   (.register collector registry))
 
 (defn build-pushgateway-client
@@ -308,19 +314,25 @@
       (doto client (.setConnectionFactory (https-connection-factory tls)))
       client)))
 
-(defn set-gauge! [^Gauge gauge {:keys [label-values value]}]
+(defn build-collectors! [registry metrics]
+  (into {} (map (fn [metric] [(:name metric) (-> (build-pushgateway-collector metric)
+                                                 (register-pushgateway-collector registry))])
+                metrics)))
+
+(defn set-gauge!
+  [^Gauge gauge {:keys [label-values value]}]
   (-> gauge
-      (.labels (into-array String (map name label-values)))
-      (.set value)))
+      ^Gauge (.labels (into-array String (map name label-values)))
+      (.set ^double value)))
 
 (defn inc-counter!
   [^Counter counter {:keys [label-values]}]
   (-> counter
-      (.labels (into-array String (map name label-values)))
+      ^Counter (.labels (into-array String (map name label-values)))
       (.inc)))
 
 (defn push-pushgateway-metric!
-  [pg registry job]
+  [^PushGateway pg ^CollectorRegistry registry ^String job]
   (.pushAdd pg registry job))
 
 ;; "sentry" is a sentry map like {:dsn "..."}
@@ -332,15 +344,13 @@
   (start [this]
     (if started?
       this
-      (let [prometheus-registry  (CollectorRegistry/defaultRegistry)
-            pushgateway-job      (:job pushgateway)
-            pushgateway-client   (build-pushgateway-client pushgateway)
-            pushgateway-registry (CollectorRegistry.)
-            pushgateway-metrics  (into {} (map #(vector (:name %1) (-> (build-pushgateway-collector %1)
-                                                                       (register-pushgateway-collector pushgateway-registry)))
-                                               (:metrics pushgateway)))
+      (let [prometheus-registry         (CollectorRegistry/defaultRegistry)
+            [pgclient pgjob pgregistry] (when pushgateway [(build-pushgateway-client pushgateway)
+                                                           (:job pushgateway)
+                                                           (CollectorRegistry.)])
+            pgmetrics            (when pushgateway (build-collectors! pgregistry (:metrics pushgateway)))
             rclient              (when riemann (riemann-client riemann))
-            [reg reps]           (build-metrics metrics rclient prometheus-registry pushgateway-registry)
+            [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
             options              (when sentry (or raven-options {}))
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)
@@ -351,8 +361,8 @@
                                                 (:host prometheus)
                                                 (assoc :socket-address
                                                        (InetSocketAddress.
-                                                        (:host prometheus)
-                                                        (:port prometheus))))]
+                                                        ^String (:host prometheus)
+                                                        ^int (:port prometheus))))]
                                      (http/start-server
                                       (partial prometheus-handler
                                                prometheus
@@ -369,10 +379,10 @@
                        :started? true)
           prometheus (assoc :prometheus {:server   prometheus-server
                                          :registry prometheus-registry})
-          pushgateway (assoc :pushgateway {:client pushgateway-client
-                                           :registry pushgateway-registry
-                                           :metrics pushgateway-metrics
-                                           :job pushgateway-job})))))
+          pushgateway (assoc :pushgateway {:client pgclient
+                                           :registry pgregistry
+                                           :metrics pgmetrics
+                                           :job pgjob})))))
   (stop [this]
     (when started?
       (when-not prevent-capture?
