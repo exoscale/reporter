@@ -168,7 +168,7 @@
         this))
     (stop [this])))
 
-(defmethod build-metrics-reporter :pushgateway [reg _ _ ^CollectorRegistry pushgateway-registry _]
+(defmethod build-metrics-reporter :pushgateway [_ _ _ ^CollectorRegistry pushgateway-registry _]
   (reify
     c/Lifecycle
     (start [this]
@@ -176,7 +176,7 @@
       this)
     (stop [this]
       (info "Clearing pushgateway registry")
-      (.clear ^CollectorRegistry pushgateway-registry))))
+      (.clear pushgateway-registry))))
 
 (defmethod build-metrics-reporter :default [_ _ _ _ [k _]]
   (throw (ex-info "Cannot build requested metrics reporter" {:reporter-key k})))
