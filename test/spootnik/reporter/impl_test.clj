@@ -134,7 +134,7 @@
                                                                   :metrics [{:name :foo_counter :help "Lorem Lorem" :type :counter :label-names [:bar :baz]}
                                                                             {:name :foo_gauge :help "Ipsum Ipsum" :type :gauge :label-names [:bar :baz]}]}}))]
       (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_gauge
-                                                                 :value 12
+                                                                 :value 13
                                                                  :label-values ["bar" "baz"]})
       (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
                                                                    :label-values ["bar" "baz"]})

@@ -103,17 +103,6 @@
   (info "building" k "reporter!")
   k)
 
-(defn build-pushgateway-collector [{:keys [name type  help  label-names]}]
-  (-> (condp = type
-        :gauge (Gauge/build)
-        :counter (Counter/build))
-      (.name (csk/->snake_case_string name))
-      (.help help)
-      (.labelNames (into-array String (map csk/->snake_case_string label-names)))))
-
-(defn register-pushgateway-collector [collector registry]
-  (.register collector registry))
-
 (defmulti build-metrics-reporter build-metrics-reporter-dispatch-fn)
 
 (defmethod build-metrics-reporter :console [reg _ _ _ [_ {:keys [opts interval]}]]
@@ -296,6 +285,17 @@
         (doto ^HttpsURLConnection (.openConnection (URL. url))
           (.setSSLSocketFactory  (.getSocketFactory ^SSLContext ssl-context)))))))
 
+(defn build-pushgateway-collector [{:keys [name type  help  label-names]}]
+  (-> (condp = type
+        :gauge (Gauge/build)
+        :counter (Counter/build))
+      (.name (csk/->snake_case_string name))
+      (.help help)
+      (.labelNames (into-array String (map csk/->snake_case_string label-names)))))
+
+(defn register-pushgateway-collector [collector registry]
+  (.register collector registry))
+
 (defn build-pushgateway-client
   [{:keys [host port tls]
     :or {port 9091}}]
@@ -321,14 +321,6 @@
   [pg registry job]
   (.pushAdd pg registry job))
 
-
-(defn initialise-pg [pushgateway pushgateway-registry pushgateway-metrics]
-  (when pushgateway [(build-pushgateway-client pushgateway)
-                     pushgateway-registry
-                     (into {} (map #(vector (:name %1) (-> (build-pushgateway-collector %1)
-                                                           (register-pushgateway-collector pushgateway-registry)))
-                                   pushgateway-metrics))]))
-
 ;; "sentry" is a sentry map like {:dsn "..."}
 ;; "raven-options" is the options map sent to raven http client
 ;; http://aleph.io/codox/aleph/aleph.http.html#var-request
@@ -339,10 +331,13 @@
     (if started?
       this
       (let [prometheus-registry  (CollectorRegistry/defaultRegistry)
+            pushgateway-job      (:job pushgateway)
+            pushgateway-client   (build-pushgateway-client pushgateway)
             pushgateway-registry (CollectorRegistry.)
-            pushgateway-metrics  (:metrics pushgateway)
+            pushgateway-metrics  (into {} (map #(vector (:name %1) (-> (build-pushgateway-collector %1)
+                                                                       (register-pushgateway-collector pushgateway-registry)))
+                                               (:metrics pushgateway)))
             rclient              (when riemann (riemann-client riemann))
-            pg                   (initialise-pg pushgateway pushgateway-registry pushgateway-metrics)
             [reg reps]           (build-metrics metrics rclient prometheus-registry [pushgateway-registry pushgateway-metrics])
             options              (when sentry (or raven-options {}))
             prometheus-server    (when prometheus
@@ -368,11 +363,14 @@
                        :registry      reg
                        :reporters     reps
                        :rclient       rclient
-                       :pg            pg
                        :raven-options options
                        :started? true)
           prometheus (assoc :prometheus {:server   prometheus-server
-                                         :registry prometheus-registry})))))
+                                         :registry prometheus-registry})
+          pushgateway (assoc :pushgateway {:client pushgateway-client
+                                           :registry pushgateway-registry
+                                           :metrics pushgateway-metrics
+                                           :job pushgateway-job})))))
   (stop [this]
     (when started?
       (when-not prevent-capture?
@@ -388,14 +386,16 @@
           (.close ^RiemannClient rclient)
           (catch Exception _)))
       (when prometheus
-        (.close ^java.io.Closeable (:server prometheus))))
+        (.close ^java.io.Closeable (:server prometheus)))
+      (when pushgateway
+        (.clear ^CollectorRegistry (:registry pushgateway))))
     (assoc this
            :raven-options nil
            :reporters nil
            :registry nil
            :rclient nil
-           :pg nil
            :prometheus nil
+           :pushgateway nil
            :started? false))
   MetricHolder
   (instrument! [this prefix]
@@ -455,14 +455,12 @@
   PushGatewaySink
   (counter! [this {:keys [name] :as metric}]
     (when pushgateway
-      (let [[client registry metrics] (:pg this)
-            job (:job pushgateway)]
+      (let [{:keys [client metrics registry job]} pushgateway]
         (inc-counter! (name metrics) metric)
         (push-pushgateway-metric! client registry job))))
   (gauge! [this {:keys [name] :as metric}]
     (when pushgateway
-      (let [[client registry metrics] (:pg this)
-            job (:job pushgateway)]
+      (let [{:keys [client metrics registry job]} pushgateway]
         (set-gauge! (name metrics) metric)
         (push-pushgateway-metric! client registry job))))
   SentrySink
