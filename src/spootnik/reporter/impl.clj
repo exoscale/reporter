@@ -35,6 +35,7 @@
            io.prometheus.client.hotspot.DefaultExports
            io.prometheus.client.Gauge
            io.prometheus.client.Counter
+           io.prometheus.client.Collector
            io.prometheus.client.exporter.PushGateway
            io.prometheus.client.exporter.HttpConnectionFactory
            java.io.StringWriter
@@ -305,18 +306,18 @@
       (doto client (.setConnectionFactory (https-connection-factory tls)))
       client)))
 
-(defn ->set-gauge [^Gauge gauge {:keys [label-values value]}]
+(defn set-gauge! [^Gauge gauge {:keys [label-values value]}]
   (-> gauge
       (.labels (into-array String (map name label-values)))
       (.set value)))
 
-(defn ->inc-counter
+(defn inc-counter!
   [^Counter counter {:keys [label-values]}]
   (-> counter
       (.labels (into-array String (map name label-values)))
       (.inc)))
 
-(defn ->push-pushgateway-metric
+(defn push-pushgateway-metric!
   [pg registry job]
   (.pushAdd pg registry job))
 
@@ -456,14 +457,14 @@
     (when pushgateway
       (let [[client registry metrics] (:pg this)
             job (:job pushgateway)]
-        (->inc-counter (name metrics) metric)
-        (->push-pushgateway-metric client registry job))))
+        (inc-counter! (name metrics) metric)
+        (push-pushgateway-metric! client registry job))))
   (gauge! [this {:keys [name] :as metric}]
     (when pushgateway
       (let [[client registry metrics] (:pg this)
             job (:job pushgateway)]
-        (->set-gauge (name metrics) metric)
-        (->push-pushgateway-metric client registry job))))
+        (set-gauge! (name metrics) metric)
+        (push-pushgateway-metric! client registry job))))
   SentrySink
   (capture! [this e]
     (capture! this e {}))
