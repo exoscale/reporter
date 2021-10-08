@@ -10,7 +10,8 @@
             [raven.client :refer [http-requests-payload-stub]])
   (:import io.prometheus.client.CollectorRegistry
            io.netty.handler.ssl.SslContextBuilder
-           io.netty.handler.ssl.ClientAuth))
+           io.netty.handler.ssl.ClientAuth
+           java.lang.String))
 
 (deftest timers-do-not-modify-the-world
   (let [reporter (component/start (map->Reporter {:metrics {:reporters {:console {:interval 100}}}}))]
@@ -139,4 +140,11 @@
                                                                    :label-values ["bar" "baz"]})
       (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
                                                                    :label-values ["bar" "baz"]})
+      (is (= "foo_counter{bar=\"bar\",baz=\"baz\",instance=\"\",job=\"testing\"} 2"
+             (-> @(http/get "http://localhost:9091/metrics")
+                 :body
+                 bs/to-string
+                 clojure.string/split-lines
+                 (nth 2))))
+
       (component/stop reporter))))
