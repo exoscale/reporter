@@ -234,7 +234,7 @@
   (mapv (partial build-metrics-reporter reg rclient prometheus-registry pushgateway-registry) reporters))
 
 (defn build-metrics
-  [{:keys [reporters] :as opt} rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
+  [{:keys [reporters]} rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
   (let [reg  (m/new-registry)
         reps (build-metrics-reporters reg reporters rclient prometheus-registry pushgateway-registry)]
     (doseq [r reps]
