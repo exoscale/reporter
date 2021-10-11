@@ -8,11 +8,7 @@
    :prometheus {:port 8007}
    :pushgateway {:host "localhost"
                  :job :foo
-                 :port 9091
-                 :metrics [{:name :foo-bar 
-                            :type :gauge 
-                            :help "Lorem Ipsum"
-                            :label-names [:foo :bar]}]}
+                 :port 9091}
    :riemann {:host     "riemann.svc"
              :port     5554
              :protocol "tls"
@@ -27,7 +23,11 @@
    :metrics {:reporters {:riemann {:interval 10
                                    :opts     {:ttl       20
                                               :tags      ["cpu" "graph"]
-                                              :host-name "localhost"}}}}})
+                                              :host-name "localhost"}}
+                         :pushgateway {:metrics [{:name :foo-bar
+                                                  :type :gauge
+                                                  :help "Lorem Ipsum"
+                                                  :label-names [:foo :bar]}]}}}})
 
 (deftest reporter-spec-validates-correctly-test
   (testing "A correct spec should be valid"

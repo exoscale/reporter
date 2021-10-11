@@ -348,7 +348,7 @@
             [pgclient pgjob pgregistry] (when pushgateway [(build-pushgateway-client pushgateway)
                                                            (:job pushgateway)
                                                            (CollectorRegistry.)])
-            pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
+            pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway :metrics])))
             rclient              (when riemann (riemann-client riemann))
             [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
             options              (when sentry (or raven-options {}))
