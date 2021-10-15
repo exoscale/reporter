@@ -45,7 +45,7 @@
                                                                      :spootnik.reporter.config.pushgateway/type
                                                                      :spootnik.reporter.config.pushgateway/help
                                                                      :spootnik.reporter.config.pushgateway/label-names]))
-(s/def :spootnik.reporter.config.pushgateway/metrics (s/coll-of :spootnik.reporter.config.pushgateway/metric))
+(s/def :spootnik.reporter.config.metrics/pushgateway (s/coll-of :spootnik.reporter.config.pushgateway/metric))
 (s/def :spootnik.reporter.config.pushgateway/pushgateway (s/keys :req-un [:spootnik.reporter.config/host
                                                                           :spootnik.reporter.config.pushgateway/job]
                                                                  :opt-un [:spootnik.reporter.config/tls
@@ -57,23 +57,22 @@
 (s/def :spootnik.reporter.config.metrics.reporter/gen-config
   (s/keys :req-un []
           :opt-un [:spootnik.reporter.config.metrics.reporter.config/interval
-                   :spootnik.reporter.config.metrics.reporter.config/opts
-                   :spootnik.reporter.config.pushgateway/metrics]))
+                   :spootnik.reporter.config.metrics.reporter.config/opts]))
 
-(s/def :spootnik.reporter.config.graphite/graphite :spootnik.reporter.config.metrics.reporter/gen-config)
-(s/def :spootnik.reporter.config.prometheus/prometheus :spootnik.reporter.config.metrics.reporter/gen-config)
-(s/def :spootnik.reporter.config.riemann/riemann :spootnik.reporter.config.metrics.reporter/gen-config)
-(s/def :spootnik.reporter.config.console/console :spootnik.reporter.config.metrics.reporter/gen-config)
-(s/def :spootnik.reporter.config.jmx/jmx :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/graphite :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/prometheus :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/riemann :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/console :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/jmx :spootnik.reporter.config.metrics.reporter/gen-config)
 ;; metrics
 
 (s/def :spootnik.reporter.config.metrics/reporters
-  (s/keys :opt-un [:spootnik.reporter.config.graphite/graphite
-                   :spootnik.reporter.config.prometheus/prometheus
-                   :spootnik.reporter.config.riemann/riemann
-                   :spootnik.reporter.config.console/console
-                   :spootnik.reporter.config.jmx/jmx
-                   :spootnik.reporter.config.pushgateway/metrics]))
+  (s/keys :opt-un [:spootnik.reporter.config.metrics/graphite
+                   :spootnik.reporter.config.metrics/prometheus
+                   :spootnik.reporter.config.metrics/riemann
+                   :spootnik.reporter.config.metrics/console
+                   :spootnik.reporter.config.metrics/jmx
+                   :spootnik.reporter.config.metrics/pushgateway]))
 (s/def :spootnik.reporter.config/metrics
   (s/keys :req-un [:spootnik.reporter.config.metrics/reporters]))
 

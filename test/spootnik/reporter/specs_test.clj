@@ -24,10 +24,10 @@
                                    :opts     {:ttl       20
                                               :tags      ["cpu" "graph"]
                                               :host-name "localhost"}}
-                         :pushgateway {:metrics [{:name :foo-bar
-                                                  :type :gauge
-                                                  :help "Lorem Ipsum"
-                                                  :label-names [:foo :bar]}]}}}})
+                         :pushgateway  [{:name :foo-bar
+                                         :type :gauge
+                                         :help "Lorem Ipsum"
+                                         :label-names [:foo :bar]}]}}})
 
 (deftest reporter-spec-validates-correctly-test
   (testing "A correct spec should be valid"
