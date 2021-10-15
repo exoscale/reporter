@@ -102,13 +102,7 @@
   [_]
   (throw (ex-info "Cannot build riemann client for invalid protocol" {})))
 
-(defn- build-metrics-reporter-dispatch-fn [_ _ _ _ [k _]]
-  (info "building" k "reporter!")
-  k)
-
-(defmulti build-metrics-reporter build-metrics-reporter-dispatch-fn)
-
-(defmethod build-metrics-reporter :console [reg _ _ _ [_ {:keys [opts interval]}]]
+(defn build-console-metrics-reporter [reg {:keys [opts interval]}]
   (let [r (console/reporter reg opts)]
     (reify
       c/Lifecycle
@@ -119,7 +113,7 @@
         (console/stop r)
         this))))
 
-(defmethod build-metrics-reporter :logs [reg _ _ _ [_ {:keys [opts interval]}]]
+(defn build-logs-metrics-reporter [reg {:keys [opts interval]}]
   (let [r (logs/reporter reg opts)]
     (reify
       c/Lifecycle
@@ -130,21 +124,21 @@
         (logs/stop r)
         this))))
 
-(defmethod build-metrics-reporter :jmx [reg _ _ _ [_ {:keys [opts interval]}]]
+(defn build-jmx-metrics-reporter [reg {:keys [opts]}]
   (let [r (jmx/reporter reg opts)]
     (reify
       c/Lifecycle
       (start [this] (jmx/start r) this)
       (stop [this]  (jmx/stop r) this))))
 
-(defmethod build-metrics-reporter :graphite [reg _ _ _ [_ {:keys [opts interval]}]]
+(defn build-graphite-metrics-reporter [reg {:keys [opts interval]}]
   (let [r (graphite/reporter reg opts)]
     (reify
       c/Lifecycle
       (start [this] (graphite/start r interval) this)
       (stop [this]  (graphite/stop r) this))))
 
-(defmethod build-metrics-reporter :riemann [reg rclient _ _ [_ {:keys [opts interval]}]]
+(defn build-riemann-metrics-reporter [reg rclient {:keys [opts interval]}]
   (if-not rclient
     (throw (ex-info "need a valid riemann client to build reporter" {}))
     (let [r (riemann/reporter rclient reg opts)]
@@ -157,18 +151,18 @@
           (riemann/stop r)
           this)))))
 
-(defmethod build-metrics-reporter :prometheus [reg _ ^CollectorRegistry prometheus-registry _ _]
+(defn build-prometheus-metrics-reporter [reg ^CollectorRegistry registry]
   (reify
     c/Lifecycle
     (start [this]
       (info "start prometheus reporter")
       (let [exporter (DropwizardExports. reg)]
-        (.register prometheus-registry exporter)
+        (.register registry exporter)
         (DefaultExports/initialize)
         this))
     (stop [this])))
 
-(defmethod build-metrics-reporter :pushgateway [_ _ _ ^CollectorRegistry pushgateway-registry _]
+(defn build-pushgateway-metrics-reporter [^CollectorRegistry registry]
   (reify
     c/Lifecycle
     (start [this]
@@ -176,10 +170,19 @@
       this)
     (stop [this]
       (info "Clearing pushgateway registry")
-      (.clear pushgateway-registry))))
+      (.clear registry))))
 
-(defmethod build-metrics-reporter :default [_ _ _ _ [k _]]
-  (throw (ex-info "Cannot build requested metrics reporter" {:reporter-key k})))
+
+(defn build-metrics-reporter [reg rclient ^CollectorRegistry prometheus-registry ^CollectorRegistry pushgateway-registry [type opt]]
+  (condp = type
+    :console  (build-console-metrics-reporter reg opt)
+    :logs     (build-logs-metrics-reporter reg opt)
+    :jmx      (build-jmx-metrics-reporter  reg opt)
+    :graphite (build-graphite-metrics-reporter reg opt)
+    :riemann  (build-riemann-metrics-reporter reg rclient opt)
+    :prometheus (build-prometheus-metrics-reporter reg prometheus-registry)
+    :pushgateway (build-pushgateway-metrics-reporter pushgateway-registry)
+    :else (throw (ex-info "Cannot build requested metrics reporter" type))))
 
 (defn ^RiemannClient riemann-client
   "To keep dependency conflicts, let's use RiemannClient directly."
