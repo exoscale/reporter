@@ -48,6 +48,7 @@
            java.net.InetSocketAddress
            java.net.URL
            javax.net.ssl.HttpsURLConnection
+           io.netty.handler.ssl.JdkSslContext
            javax.net.ssl.SSLContext))
 
 (defprotocol RiemannSink
@@ -278,7 +279,7 @@
       (.clientAuth ClientAuth/REQUIRE)
       (.build)))
 
-(defn client-ssl-context
+(defn ^JdkSslContext client-ssl-context
   [{:keys [pkey cert ca-cert]}]
   (-> (SslContextBuilder/forClient)
       (.trustManager (io/file ca-cert))
@@ -291,7 +292,7 @@
     (reify HttpConnectionFactory
       (create [this url]
         (doto ^HttpsURLConnection (.openConnection (URL. url))
-          (.setSSLSocketFactory  (.getSocketFactory ^SSLContext ssl-context)))))))
+          (.setSSLSocketFactory  (.getSocketFactory ^SSLContext (.context ssl-context))))))))
 
 (defn ^SimpleCollector$Builder collector-builder-of [type]
   (condp = type
