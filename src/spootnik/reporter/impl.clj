@@ -521,7 +521,8 @@
   (start! [this alias])
   (stop! [this ctx])
   PushGatewaySink
-  (gauge! ([this metric]))
+  (gauge!   ([this metric]))
+  (counter! ([this metric]))
   SentrySink
   (capture! ([this e]) ([this e tags]))
   RiemannSink
