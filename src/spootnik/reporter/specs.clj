@@ -6,8 +6,8 @@
 
 (s/def :spootnik.reporter.config/bundle string?)
 (s/def :spootnik.reporter.config/password string?)
-(s/def :spootnik.reporter.config/ssl-bundle 
-  (s/keys :req-un [:spootnik.reporter.config/bundle 
+(s/def :spootnik.reporter.config/ssl-bundle
+  (s/keys :req-un [:spootnik.reporter.config/bundle
                    :spootnik.reporter.config/password]))
 (s/def :spootnik.reporter.config/cert string?)
 (s/def :spootnik.reporter.config/ca-cert string?)
@@ -35,18 +35,44 @@
                    :spootnik.reporter.config.riemann/defaults
                    :spootnik.reporter.config/tls]))
 
-;; single metrics reporter
+;; pushgateway
+(s/def :spootnik.reporter.config.pushgateway/job keyword?)
+(s/def :spootnik.reporter.config.pushgateway/name keyword?)
+(s/def :spootnik.reporter.config.pushgateway/type #{:gauge :counter})
+(s/def :spootnik.reporter.config.pushgateway/help string?)
+(s/def :spootnik.reporter.config.pushgateway/label-names (s/coll-of keyword?))
+(s/def :spootnik.reporter.config.pushgateway/metric (s/keys :req-un [:spootnik.reporter.config.pushgateway/name
+                                                                     :spootnik.reporter.config.pushgateway/type
+                                                                     :spootnik.reporter.config.pushgateway/help
+                                                                     :spootnik.reporter.config.pushgateway/label-names]))
+(s/def :spootnik.reporter.config.metrics/pushgateway (s/coll-of :spootnik.reporter.config.pushgateway/metric))
+(s/def :spootnik.reporter.config.pushgateway/pushgateway (s/keys :req-un [:spootnik.reporter.config/host
+                                                                          :spootnik.reporter.config.pushgateway/job]
+                                                                 :opt-un [:spootnik.reporter.config/tls
+                                                                          :spootnik.reporter.config/port]))
+
+;; generic metrics reporter
 (s/def :spootnik.reporter.config.metrics.reporter.config/opts map?)
 (s/def :spootnik.reporter.config.metrics.reporter.config/interval pos-int?)
-(s/def :spootnik.reporter.config.metrics.reporter/config
+(s/def :spootnik.reporter.config.metrics.reporter/gen-config
   (s/keys :req-un []
           :opt-un [:spootnik.reporter.config.metrics.reporter.config/interval
                    :spootnik.reporter.config.metrics.reporter.config/opts]))
 
+(s/def :spootnik.reporter.config.metrics/graphite :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/prometheus :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/riemann :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/console :spootnik.reporter.config.metrics.reporter/gen-config)
+(s/def :spootnik.reporter.config.metrics/jmx :spootnik.reporter.config.metrics.reporter/gen-config)
 ;; metrics
+
 (s/def :spootnik.reporter.config.metrics/reporters
-  (s/map-of #{:graphite :prometheus :riemann :console :jmx}
-            :spootnik.reporter.config.metrics.reporter/config))
+  (s/keys :opt-un [:spootnik.reporter.config.metrics/graphite
+                   :spootnik.reporter.config.metrics/prometheus
+                   :spootnik.reporter.config.metrics/riemann
+                   :spootnik.reporter.config.metrics/console
+                   :spootnik.reporter.config.metrics/jmx
+                   :spootnik.reporter.config.metrics/pushgateway]))
 (s/def :spootnik.reporter.config/metrics
   (s/keys :req-un [:spootnik.reporter.config.metrics/reporters]))
 
@@ -61,6 +87,7 @@
                                                     :opt-un [:spootnik.reporter.config/tls
                                                              :spootnik.reporter.config/endpoint
                                                              :spootnik.reporter.config/host]))
+
 ;; General config
 (s/def :spootnik.reporter.config/prevent-capture? boolean?)
 (s/def :spootnik.reporter/config
@@ -69,4 +96,6 @@
                    :spootnik.reporter.config/sentry
                    :spootnik.reporter.config/metrics
                    :spootnik.reporter.config/riemann
-                   :spootnik.reporter.config/prometheus]))
+                   :spootnik.reporter.config/prometheus
+                   :spootnik.reporter.config.pushgateway/pushgateway]))
+

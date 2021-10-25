@@ -10,7 +10,8 @@
             [raven.client :refer [http-requests-payload-stub]])
   (:import io.prometheus.client.CollectorRegistry
            io.netty.handler.ssl.SslContextBuilder
-           io.netty.handler.ssl.ClientAuth))
+           io.netty.handler.ssl.ClientAuth
+           java.lang.String))
 
 (deftest timers-do-not-modify-the-world
   (let [reporter (component/start (map->Reporter {:metrics {:reporters {:console {:interval 100}}}}))]
@@ -73,16 +74,16 @@
 
 (def client-context
   (-> (SslContextBuilder/forClient)
-      (.trustManager (->resource "ca.crt"))
-      (.keyManager (->resource "client.crt") (->resource "client.key"))
+      (.trustManager (->resource "ca-cert.pem"))
+      (.keyManager (->resource "client-cert.pem") (->resource "client-key.pem"))
       .build))
 
 (deftest prometheus-tls-auth
   (let [port       sample-port
         prometheus {:prometheus {:port port
-                                 :tls  {:pkey    (->resource "server.key")
-                                        :cert    (->resource "server.crt")
-                                        :ca-cert (->resource "ca.crt")}}
+                                 :tls  {:pkey    (->resource "server-key.pem")
+                                        :cert    (->resource "server-cert.pem")
+                                        :ca-cert (->resource "ca-cert.pem")}}
                     :metrics    {:reporters {:prometheus {}}}}
         system     (map->Reporter prometheus)
         reporter   (component/start system)]
@@ -121,5 +122,28 @@
 
       (.capture! ^spootnik.reporter.impl.SentrySink reporter {:message "A simple test event"})
       (is (= "A simple test event" (:message (first @http-requests-payload-stub))))
+
+      (component/stop reporter))))
+
+(deftest pushgateway-send-events
+  (testing "Sending events to pushgateway"
+    (let [reporter (component/start (map->Reporter {:metrics {:reporters {:pushgateway  [{:name :foo_counter :help "Lorem Lorem" :type :counter :label-names [:bar :baz]}
+                                                                                         {:name :foo-gauge :help "Ipsum Ipsum" :type :gauge :label-names [:bar :baz]}]}}
+                                                    :pushgateway {:host "localhost"
+                                                                  :job "testing"
+                                                                  :port 9091}}))]
+      (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo-gauge
+                                                                 :value 13
+                                                                 :label-values ["bar" "baz"]})
+      (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
+                                                                   :label-values ["bar" "baz"]})
+      (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
+                                                                   :label-values ["bar" "baz"]})
+      (is (= "foo_counter{bar=\"bar\",baz=\"baz\",instance=\"\",job=\"testing\"} 2"
+             (-> @(http/get "http://localhost:9091/metrics")
+                 :body
+                 bs/to-string
+                 clojure.string/split-lines
+                 (nth 2))))
 
       (component/stop reporter))))

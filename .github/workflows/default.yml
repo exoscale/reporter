@@ -3,6 +3,11 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      pushgateway:
+        image: prom/pushgateway
+        ports:
+        - 9091:9091/tcp
     steps:
     - uses: actions/checkout@v2
     - name: Install dependencies
