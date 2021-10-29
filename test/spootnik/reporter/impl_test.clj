@@ -127,23 +127,58 @@
 
 (deftest pushgateway-send-events
   (testing "Sending events to pushgateway"
-    (let [reporter (component/start (map->Reporter {:metrics {:reporters {:pushgateway  [{:name :foo_counter :help "Lorem Lorem" :type :counter :label-names [:bar :baz]}
-                                                                                         {:name :foo-gauge :help "Ipsum Ipsum" :type :gauge :label-names [:bar :baz]}]}}
+    (let [reporter (component/start (map->Reporter {:metrics {:reporters {:pushgateway  [{:name
+                                                                                          :foo_counter
+                                                                                          :help "A Counter"
+                                                                                          :type :counter
+                                                                                          :label-names [:bar :baz]}
+                                                                                         {:name
+                                                                                          :foo-gauge
+                                                                                          :help "A Gauge"
+                                                                                          :type :gauge
+                                                                                          :label-names [:bar :baz]}
+                                                                                         {:name
+                                                                                          :foo-gauge-b
+                                                                                          :help "YAG"
+                                                                                          :type :gauge
+                                                                                          :label-names [:bar :baz]}]}}
                                                     :pushgateway {:host "localhost"
                                                                   :job "testing"
-                                                                  :port 9091}}))]
-      (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo-gauge
-                                                                 :value 13
-                                                                 :label-values ["bar" "baz"]})
-      (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
-                                                                   :label-values ["bar" "baz"]})
-      (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name :foo_counter
-                                                                   :label-values ["bar" "baz"]})
-      (is (= "foo_counter{bar=\"bar\",baz=\"baz\",instance=\"\",job=\"testing\"} 2"
-             (-> @(http/get "http://localhost:9091/metrics")
-                 :body
-                 bs/to-string
-                 clojure.string/split-lines
-                 (nth 2))))
+                                                                  :grouping-keys {:cluster "testing-cluster"}
+                                                                  :port 9091}}))
+          metrics-to-push [[:counter :foo_counter  ["taba" "tec"] 0]
+                           [:counter :foo_counter  ["taba" "zar"] 0]
+                           [:gauge   :foo-gauge    ["taba" "tec"] 2]
+                           [:gauge   :foo-gauge    ["taba" "zar"] 3]
+                           [:gauge   :foo-gauge-b  ["taba" "tec"] 4]
+                           [:gauge   :foo-gauge    ["taba" "tec"] 5]
+                           [:counter :foo_counter  ["taba" "tec"] 0]]]
+
+
+      (doseq [metric metrics-to-push]
+        (let [[type name label-values value] metric]
+          (condp = type
+            :counter
+            (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name name
+                                                                         :label-values label-values})
+            :gauge
+            (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name name
+                                                                       :value value
+                                                                       :label-values label-values}))))
+
+      (let [pg-metrics (-> @(http/get "http://localhost:9091/metrics")
+                           :body
+                           bs/to-string
+                           clojure.string/split-lines)]
+        (is (= "foo_counter{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 2"
+               (nth pg-metrics 2)))
+        (is (= "foo_counter{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
+               (nth pg-metrics 3)))
+        (is (= "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
+               (nth pg-metrics 6)))
+        (is (= "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
+               (nth pg-metrics 7)))
+        (is (= "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"
+               (nth pg-metrics 10))))
 
       (component/stop reporter))))

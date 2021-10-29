@@ -336,8 +336,11 @@
       (.inc)))
 
 (defn push-pushgateway-metric!
-  [^PushGateway pg ^CollectorRegistry registry ^String job]
-  (.pushAdd pg registry job))
+  [^PushGateway pg ^Collector collector ^String job ^java.util.Map grouping-keys]
+  (.pushAdd pg collector job grouping-keys))
+
+(defn parse-pggrouping-keys [grouping-keys]
+  (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
 
 ;; "sentry" is a sentry map like {:dsn "..."}
 ;; "raven-options" is the options map sent to raven http client
@@ -349,9 +352,10 @@
     (if started?
       this
       (let [prometheus-registry         (CollectorRegistry/defaultRegistry)
-            [pgclient pgjob pgregistry] (when pushgateway [(build-pushgateway-client pushgateway)
-                                                           (:job pushgateway)
-                                                           (CollectorRegistry.)])
+            [pgclient pgjob pgregistry pggrouping-keys] (when pushgateway [(build-pushgateway-client pushgateway)
+                                                                           (:job pushgateway)
+                                                                           (CollectorRegistry.)
+                                                                           (parse-pggrouping-keys (:grouping-keys pushgateway))])
             pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
             rclient              (when riemann (riemann-client riemann))
             [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
@@ -385,6 +389,7 @@
                                          :registry prometheus-registry})
           pushgateway (assoc :pushgateway {:client pgclient
                                            :registry pgregistry
+                                           :grouping-keys pggrouping-keys
                                            :metrics pgmetrics
                                            :job pgjob})))))
   (stop [this]
@@ -469,14 +474,16 @@
   PushGatewaySink
   (counter! [this {:keys [name] :as metric}]
     (when pushgateway
-      (let [{:keys [client metrics registry job]} pushgateway]
-        (inc-counter! (name metrics) metric)
-        (push-pushgateway-metric! client registry job))))
+      (let [{:keys [client metrics job grouping-keys]} pushgateway
+            collector (name metrics)]
+        (inc-counter! collector metric)
+        (push-pushgateway-metric! client collector job grouping-keys))))
   (gauge! [this {:keys [name] :as metric}]
     (when pushgateway
-      (let [{:keys [client metrics registry job]} pushgateway]
-        (set-gauge! (name metrics) metric)
-        (push-pushgateway-metric! client registry job))))
+      (let [{:keys [client metrics job grouping-keys]} pushgateway
+            collector (name metrics)]
+        (set-gauge! collector metric)
+        (push-pushgateway-metric! client collector job grouping-keys))))
   SentrySink
   (capture! [this e]
     (capture! this e {}))

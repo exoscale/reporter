@@ -41,6 +41,7 @@
 (s/def :spootnik.reporter.config.pushgateway/type #{:gauge :counter})
 (s/def :spootnik.reporter.config.pushgateway/help string?)
 (s/def :spootnik.reporter.config.pushgateway/label-names (s/coll-of keyword?))
+(s/def :spootnik.reporter.config.pushgateway/grouping-keys (s/coll-of keyword?))
 (s/def :spootnik.reporter.config.pushgateway/metric (s/keys :req-un [:spootnik.reporter.config.pushgateway/name
                                                                      :spootnik.reporter.config.pushgateway/type
                                                                      :spootnik.reporter.config.pushgateway/help
@@ -49,6 +50,7 @@
 (s/def :spootnik.reporter.config.pushgateway/pushgateway (s/keys :req-un [:spootnik.reporter.config/host
                                                                           :spootnik.reporter.config.pushgateway/job]
                                                                  :opt-un [:spootnik.reporter.config/tls
+                                                                          :spootnik.reporter.config.pushgateway/grouping-keys
                                                                           :spootnik.reporter.config/port]))
 
 ;; generic metrics reporter
