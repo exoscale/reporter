@@ -40,8 +40,9 @@
 (s/def :spootnik.reporter.config.pushgateway/name keyword?)
 (s/def :spootnik.reporter.config.pushgateway/type #{:gauge :counter})
 (s/def :spootnik.reporter.config.pushgateway/help string?)
-(s/def :spootnik.reporter.config.pushgateway/label-names (s/coll-of keyword?))
-(s/def :spootnik.reporter.config.pushgateway/grouping-keys (s/coll-of keyword?))
+(s/def :spootnik.reporter.config.pushgateway/label-name keyword?)
+(s/def :spootnik.reporter.config.pushgateway/label-names (s/coll-of :spootnik.reporter.config.pushgateway/label-name))
+(s/def :spootnik.reporter.config.pushgateway/grouping-keys (s/map-of :spootnik.reporter.config.pushgateway/label-name string?))
 (s/def :spootnik.reporter.config.pushgateway/metric (s/keys :req-un [:spootnik.reporter.config.pushgateway/name
                                                                      :spootnik.reporter.config.pushgateway/type
                                                                      :spootnik.reporter.config.pushgateway/help
