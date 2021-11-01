@@ -336,8 +336,8 @@
       (.inc)))
 
 (defn push-pushgateway-metric!
-  [^PushGateway pg ^Collector collector ^String job ^java.util.Map grouping-keys]
-  (.pushAdd pg collector job grouping-keys))
+  [^PushGateway pg ^CollectorRegistry registry ^String job ^java.util.Map grouping-keys]
+  (.push pg registry job grouping-keys))
 
 (defn parse-pggrouping-keys [grouping-keys]
   (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
@@ -474,16 +474,16 @@
   PushGatewaySink
   (counter! [this {:keys [name] :as metric}]
     (when pushgateway
-      (let [{:keys [client metrics job grouping-keys]} pushgateway
+      (let [{:keys [client metrics job registry grouping-keys]} pushgateway
             collector (name metrics)]
         (inc-counter! collector metric)
-        (push-pushgateway-metric! client collector job grouping-keys))))
+        (push-pushgateway-metric! client registry job grouping-keys))))
   (gauge! [this {:keys [name] :as metric}]
     (when pushgateway
-      (let [{:keys [client metrics job grouping-keys]} pushgateway
+      (let [{:keys [client metrics job registry grouping-keys]} pushgateway
             collector (name metrics)]
         (set-gauge! collector metric)
-        (push-pushgateway-metric! client collector job grouping-keys))))
+        (push-pushgateway-metric! client registry job grouping-keys))))
   SentrySink
   (capture! [this e]
     (capture! this e {}))
