@@ -8,7 +8,8 @@
    :prometheus {:port 8007}
    :pushgateway {:host "localhost"
                  :job :foo
-                 :port 9091}
+                 :port 9091
+                 :grouping-keys {:cache "hit"}}
    :riemann {:host     "riemann.svc"
              :port     5554
              :protocol "tls"
