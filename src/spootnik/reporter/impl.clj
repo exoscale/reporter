@@ -353,7 +353,7 @@
       this
       (let [prometheus-registry         (CollectorRegistry/defaultRegistry)
             [pgclient pgjob pgregistry pggrouping-keys] (when pushgateway [(build-pushgateway-client pushgateway)
-                                                                           (:job pushgateway)
+                                                                           (name (:job pushgateway))
                                                                            (CollectorRegistry.)
                                                                            (parse-pggrouping-keys (:grouping-keys pushgateway))])
             pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
@@ -363,7 +363,7 @@
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)
                                          opts (cond->
-                                               {:port (:port prometheus)}
+                                                {:port (:port prometheus)}
                                                 (some? (:tls prometheus))
                                                 (assoc :ssl-context (server-ssl-context tls))
                                                 (:host prometheus)
