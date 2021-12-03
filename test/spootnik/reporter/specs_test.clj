@@ -19,7 +19,7 @@
                         :tags ["cpu" "graph"]}
 
              :tls {:cert      "/etc/riemann/ssl/cert.pem"
-                   :authority "/etc/riemann/ssl/ca.pem"
+                   :ca-cert   "/etc/riemann/ssl/ca.pem"
                    :pkey      "/etc/riemann/ssl/key.pkcs8"}}
    :metrics {:reporters {:riemann {:interval 10
                                    :opts     {:ttl       20

@@ -97,7 +97,7 @@
          (.set (SSL/sslContext
                 (:pkey tls)
                 (:cert tls)
-                (:authority tls)))))))
+                (:ca-cert tls)))))))
 
 (defmethod build-client :default
   [_]
