@@ -11,9 +11,8 @@
                    :spootnik.reporter.config/password]))
 (s/def :spootnik.reporter.config/cert string?)
 (s/def :spootnik.reporter.config/ca-cert string?)
-(s/def :spootnik.reporter.config/authority string?)
 (s/def :spootnik.reporter.config/pkey string?)
-(s/def :spootnik.reporter.config/ssl-cert (s/keys :req-un [:spootnik.reporter.config/cert :spootnik.reporter.config/authority :spootnik.reporter.config/pkey]))
+(s/def :spootnik.reporter.config/ssl-cert (s/keys :req-un [:spootnik.reporter.config/cert :spootnik.reporter.config/ca-cert :spootnik.reporter.config/pkey]))
 (s/def :spootnik.reporter.config/ssl (s/or :bundle :spootnik.reporter.config/ssl-bundle :cert :spootnik.reporter.config/ssl-cert))
 
 ;; Generic
