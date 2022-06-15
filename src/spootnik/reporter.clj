@@ -84,11 +84,9 @@
                            (raven/add-exception! error))
                        {:message error})
                      (raven/add-extra! extra)))
-
        (d/catch Throwable
            (fn [e]
              (log/error e "Sentry failure")))
-
        (try
          (catch Throwable e
            (log/error e "Sentry failure"))))))
