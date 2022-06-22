@@ -489,10 +489,13 @@
     (capture! this e {}))
   (capture! [this e tags]
     (if (:dsn sentry)
-      (d/chain
-       (raven/capture! raven-options (:dsn sentry) e tags)
-       (fn [event-id]
-         (error e (str "captured exception as sentry event: " event-id))))
+      (-> (raven/capture! raven-options (:dsn sentry) e tags)
+          (d/chain
+           (fn [event-id]
+             (error e (str "captured exception as sentry event: " event-id))))
+          (d/catch (fn [e']
+                     (error e "Failed to capture exception" {:tags tags :capture-exception e'})
+                     (capture! this e'))))
       (error e)))
   RiemannSink
   (send! [this ev]
