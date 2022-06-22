@@ -489,7 +489,10 @@
     (capture! this e {}))
   (capture! [this e tags]
     (if (:dsn sentry)
-      (-> (raven/capture! raven-options (:dsn sentry) e tags)
+      (-> (try
+            (raven/capture! raven-options (:dsn sentry) e tags)
+            (catch Exception e
+              (d/error-deferred e)))
           (d/chain
            (fn [event-id]
              (error e (str "captured exception as sentry event: " event-id))))
