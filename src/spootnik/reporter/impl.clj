@@ -23,7 +23,6 @@
   (:import com.aphyr.riemann.client.RiemannClient
            com.aphyr.riemann.client.RiemannBatchClient
            com.aphyr.riemann.client.TcpTransport
-           com.aphyr.riemann.client.SSL
            com.aphyr.riemann.client.EventDSL
            com.aphyr.riemann.client.IPromise
            com.codahale.metrics.ScheduledReporter
@@ -41,12 +40,17 @@
            io.prometheus.client.Collector
            io.prometheus.client.exporter.PushGateway
            io.prometheus.client.exporter.HttpConnectionFactory
+           java.io.File
+           java.io.FileInputStream
+           java.io.InputStream
            java.io.StringWriter
            java.util.concurrent.TimeUnit
            java.util.List
            java.util.Map
            java.net.InetSocketAddress
            java.net.URL
+           java.security.cert.X509Certificate
+           java.security.cert.CertificateFactory
            javax.net.ssl.HttpsURLConnection
            io.netty.handler.ssl.JdkSslContext
            javax.net.ssl.SSLContext))
@@ -72,7 +76,6 @@
   (start! [this alias])
   (stop! [this ctx]))
 
-
 (def config->protocol
   (comp keyword
         str/lower-case
@@ -89,15 +92,14 @@
   [{:keys [host port] :or {host "127.0.0.1" port 5555}}]
   (RiemannClient/tcp host (int port)))
 
+(declare client-ssl-context)
+
 (defmethod build-client :tls
   [{:keys [host port tls] :or {host "127.0.0.1" port 5554}}]
   (RiemannClient/wrap
    (doto (new TcpTransport host (int port))
      (-> .-sslContext
-         (.set (SSL/sslContext
-                (:pkey tls)
-                (:cert tls)
-                (:ca-cert tls)))))))
+         (.set (.context (client-ssl-context tls)))))))
 
 (defmethod build-client :default
   [_]
@@ -173,7 +175,6 @@
       (info "Clearing pushgateway registry")
       (.clear registry))))
 
-
 (defn build-metrics-reporter [reg rclient ^CollectorRegistry prometheus-registry ^CollectorRegistry pushgateway-registry [type opt]]
   (condp = type
     :console  (build-console-metrics-reporter reg opt)
@@ -185,8 +186,9 @@
     :pushgateway (build-pushgateway-metrics-reporter pushgateway-registry)
     :else (throw (ex-info "Cannot build requested metrics reporter" type))))
 
-(defn ^RiemannClient riemann-client
+(defn riemann-client
   "To keep dependency conflicts, let's use RiemannClient directly."
+  ^RiemannClient
   [{:keys [batch] :as opts}]
   (try
     (let [client ^RiemannClient (build-client opts)]
@@ -272,6 +274,26 @@
      :headers {"Content-Type" TextFormat/CONTENT_TYPE_004}
      :body (prometheus-str-metrics prometheus-registry)}))
 
+(defn ^"[Ljava.security.cert.X509Certificate;" read-ca-certs
+  "Read all available certificate from the default UNIX location
+   Adds any provided certificate as CA.
+   Yields an array of X509Certificate, ready to be used to
+   build a `trustManager` for an `SslContext`"
+  [files]
+  (let [->file #(if (string? %) (io/file %) %)
+        dir    (io/file "/etc/ssl/certs")
+        fact   (CertificateFactory/getInstance "X509")]
+    (->> dir
+         (.listFiles)
+         (seq)
+         (concat (map ->file files))
+         (filter #(.isFile ^File %))
+         (map #(FileInputStream. ^File %))
+         (map #(.generateCertificates fact ^InputStream %))
+         (into [])
+         (apply concat)
+         (into-array X509Certificate))))
+
 (defn server-ssl-context
   [{:keys [pkey cert ca-cert]}]
   (-> (SslContextBuilder/forServer (io/file cert) (io/file pkey))
@@ -279,12 +301,15 @@
       (.clientAuth ClientAuth/REQUIRE)
       (.build)))
 
-(defn ^JdkSslContext client-ssl-context
-  [{:keys [pkey cert ca-cert]}]
-  (-> (SslContextBuilder/forClient)
-      (.trustManager (io/file ca-cert))
-      (.keyManager (io/file cert) (io/file pkey))
-      (.build)))
+(defn client-ssl-context
+  ^JdkSslContext
+  [{:keys [pkey cert ca-cert authorities]}]
+  (let [authorities (or authorities [ca-cert])
+        ca-certs    (read-ca-certs authorities)]
+    (-> (SslContextBuilder/forClient)
+        (.trustManager ca-certs)
+        (.keyManager (io/file cert) (io/file pkey))
+        (.build))))
 
 (defn- https-connection-factory
   [tls]
@@ -294,18 +319,22 @@
         (doto ^HttpsURLConnection (.openConnection (URL. url))
           (.setSSLSocketFactory  (.getSocketFactory ^SSLContext (.context ssl-context))))))))
 
-(defn ^SimpleCollector$Builder collector-builder-of [type]
+(defn collector-builder-of
+  ^SimpleCollector$Builder [type]
   (condp = type
     :gauge (Gauge/build)
     :counter (Counter/build)))
 
-(defn ^SimpleCollector$Builder build-pushgateway-collector [{:keys [name type  help  label-names]}]
+(defn build-pushgateway-collector
+  ^SimpleCollector$Builder [{:keys [name type  help  label-names]}]
   (-> (collector-builder-of type)
       (.name (csk/->snake_case_string name))
       (.help help)
       (.labelNames (into-array String (map csk/->snake_case_string label-names)))))
 
-(defn ^Collector register-pushgateway-collector [^SimpleCollector$Builder collector registry]
+(defn register-pushgateway-collector
+  ^Collector
+  [^SimpleCollector$Builder collector registry]
   (.register collector registry))
 
 (defn build-pushgateway-client
@@ -362,8 +391,7 @@
             options              (when sentry (or raven-options {}))
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)
-                                         opts (cond->
-                                                {:port (:port prometheus)}
+                                         opts (cond-> {:port (:port prometheus)}
                                                 (some? (:tls prometheus))
                                                 (assoc :ssl-context (server-ssl-context tls))
                                                 (:host prometheus)
