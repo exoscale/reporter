@@ -1,6 +1,6 @@
 (ns spootnik.reporter.specs
-  (:require [clojure.spec.alpha :as s]))
-
+  (:require [clojure.spec.alpha :as s]
+            [clojure.string     :as str]))
 
 ;; SSL
 
@@ -11,8 +11,9 @@
                    :spootnik.reporter.config/password]))
 (s/def :spootnik.reporter.config/cert string?)
 (s/def :spootnik.reporter.config/ca-cert string?)
+(s/def :spootnik.reporter.config/authorities (s/coll-of string?))
 (s/def :spootnik.reporter.config/pkey string?)
-(s/def :spootnik.reporter.config/ssl-cert (s/keys :req-un [:spootnik.reporter.config/cert :spootnik.reporter.config/ca-cert :spootnik.reporter.config/pkey]))
+(s/def :spootnik.reporter.config/ssl-cert (s/keys :req-un [:spootnik.reporter.config/cert (or :spootnik.reporter.config/ca-cert :spootnik.reporter.config/authorities) :spootnik.reporter.config/pkey]))
 (s/def :spootnik.reporter.config/ssl (s/or :bundle :spootnik.reporter.config/ssl-bundle :cert :spootnik.reporter.config/ssl-cert))
 
 ;; Generic
@@ -20,7 +21,7 @@
 (s/def :spootnik.reporter.config/host string?)
 (s/def :spootnik.reporter.config/protocol string?)
 (s/def :spootnik.reporter.config/tls :spootnik.reporter.config/ssl-cert)
-(s/def :spootnik.reporter.config/endpoint (s/and string? #(clojure.string/starts-with? % "/")))
+(s/def :spootnik.reporter.config/endpoint (s/and string? #(str/starts-with? % "/")))
 
 ;; riemann
 (s/def :spootnik.reporter.config.riemann/batch pos-int?)
@@ -83,7 +84,6 @@
 (s/def :spootnik.reporter.config/sentry
   (s/keys :req-un [:spootnik.reporter.config.sentry/dsn]))
 
-
 ;; prometheus
 (s/def :spootnik.reporter.config/prometheus (s/keys :req-un [:spootnik.reporter.config/port]
                                                     :opt-un [:spootnik.reporter.config/tls
@@ -100,4 +100,3 @@
                    :spootnik.reporter.config/riemann
                    :spootnik.reporter.config/prometheus
                    :spootnik.reporter.config.pushgateway/pushgateway]))
-

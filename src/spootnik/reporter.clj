@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [raven.client :as raven]
             [spootnik.reporter.impl :as rptr]
-            [manifold.deferred :as d]))
+            [manifold.deferred :as d]
+            spootnik.reporter.specs))
 
 (def ^:redef reporter
   "The main reporter instance"
@@ -85,8 +86,8 @@
                        {:message error})
                      (raven/add-extra! extra)))
        (d/catch Throwable
-           (fn [e]
-             (log/error e "Sentry failure")))
+                (fn [e]
+                  (log/error e "Sentry failure")))
        (try
          (catch Throwable e
            (log/error e "Sentry failure"))))))
