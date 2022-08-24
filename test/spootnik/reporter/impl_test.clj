@@ -7,7 +7,8 @@
             [prometheus.core :as prometheus]
             [spootnik.reporter.impl :refer :all]
             [com.stuartsierra.component :as component]
-            [raven.client :refer [http-requests-payload-stub]])
+            [raven.client :refer [http-requests-payload-stub]]
+            [clojure.set :as cljset])
   (:import io.prometheus.client.CollectorRegistry
            io.netty.handler.ssl.SslContextBuilder
            io.netty.handler.ssl.ClientAuth
@@ -64,7 +65,7 @@
       (testing "store a native prometheus metric in the registry"
         (is (str/includes? metrics "do you even increment?")))
       (testing "increment a native counter and retreive the result"
-        (is (str/includes? metrics "test_native_counter{test=\"test\",} 42.0"))))
+        (is (str/includes? metrics "test_native_counter_total{test=\"test\",} 42.0"))))
     (.clear ^CollectorRegistry (:registry store))
     (component/stop reporter)))
 
@@ -154,7 +155,6 @@
                            [:gauge   :foo-gauge    ["taba" "tec"] 5]
                            [:counter :foo_counter  ["taba" "tec"] 0]]]
 
-
       (doseq [metric metrics-to-push]
         (let [[type name label-values value] metric]
           (condp = type
@@ -169,16 +169,13 @@
       (let [pg-metrics (-> @(http/get "http://localhost:9091/metrics")
                            :body
                            bs/to-string
-                           clojure.string/split-lines)]
-        (is (= "foo_counter{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 2"
-               (nth pg-metrics 2)))
-        (is (= "foo_counter{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
-               (nth pg-metrics 3)))
-        (is (= "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
-               (nth pg-metrics 6)))
-        (is (= "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
-               (nth pg-metrics 7)))
-        (is (= "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"
-               (nth pg-metrics 10))))
+                           clojure.string/split-lines
+                           set)
+            expected   #{"foo_counter_total{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 2"
+                         "foo_counter_total{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
+                         "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
+                         "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
+                         "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"}]
+        (is (true? (cljset/subset? expected pg-metrics))))
 
       (component/stop reporter))))
