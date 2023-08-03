@@ -21,6 +21,10 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 0.2.0
+
+- Allow arbitray values for counter 
+
 #### 0.1.60
 
 - Use :ca-cert config key instead of :authority
