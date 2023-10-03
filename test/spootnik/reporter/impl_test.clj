@@ -153,14 +153,15 @@
                            [:gauge   :foo-gauge    ["taba" "zar"] 3]
                            [:gauge   :foo-gauge-b  ["taba" "tec"] 4]
                            [:gauge   :foo-gauge    ["taba" "tec"] 5]
-                           [:counter :foo_counter  ["taba" "tec"] 0]]]
+                           [:counter :foo_counter  ["taba" "tec"] 3]]]
 
       (doseq [metric metrics-to-push]
         (let [[type name label-values value] metric]
           (condp = type
             :counter
-            (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter {:name name
-                                                                         :label-values label-values})
+            (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter (cond-> {:name         name
+                                                                                 :label-values label-values}
+                                                                          (not= 0 value) (assoc :value value)))
             :gauge
             (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name name
                                                                        :value value
@@ -171,7 +172,7 @@
                            bs/to-string
                            clojure.string/split-lines
                            set)
-            expected   #{"foo_counter_total{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 2"
+            expected   #{"foo_counter_total{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"
                          "foo_counter_total{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
                          "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
                          "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"

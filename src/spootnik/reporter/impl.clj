@@ -359,10 +359,11 @@
       (.set ^double value)))
 
 (defn inc-counter!
-  [^Counter counter {:keys [label-values]}]
+  "Increment the given `counter` with optional increment `value`."
+  [^Counter counter {:keys [value label-values] :or {value 1}}]
   (-> counter
       ^Counter$Child (.labels (into-array String (map name label-values)))
-      (.inc)))
+      (.inc (double value))))
 
 (defn push-pushgateway-metric!
   [^PushGateway pg ^CollectorRegistry registry ^String job ^java.util.Map grouping-keys]
