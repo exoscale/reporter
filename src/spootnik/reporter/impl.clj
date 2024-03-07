@@ -404,7 +404,7 @@
                                                prometheus-registry)
                                       opts)))]
 
-        (rs/init! (:dsn sentry) sentry)
+        (rs/init! sentry)
 
         (when-not prevent-capture?
           (with-uncaught e
@@ -439,7 +439,7 @@
       (when prometheus
         (.close ^java.io.Closeable (:server prometheus)))
 
-      (rs/close! (:dsn sentry)))
+      (rs/close! sentry))
 
     (assoc this
            :raven-options nil

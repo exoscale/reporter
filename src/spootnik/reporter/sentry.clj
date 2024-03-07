@@ -92,12 +92,12 @@
 
       (swap! http-requests-payload-stub conj event))))
 
-(defn init! [dsn sentry]
+(defn init! [{:keys [dsn] :as sentry}]
   (if-not (in-memory? dsn)
-    (sentry-io/init! (:dsn sentry) sentry)
+    (sentry-io/init! dsn sentry)
     (reset! http-requests-payload-stub [])))
 
-(defn close! [dsn]
+(defn close! [{:keys [dsn]}]
   (if-not (in-memory? dsn)
     (sentry-io/close!)
     (reset! http-requests-payload-stub nil)))
