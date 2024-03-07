@@ -1,7 +1,6 @@
 (ns spootnik.reporter
   (:require [com.stuartsierra.component :as c]
             [clojure.tools.logging :as log]
-            [raven.client :as raven]
             [spootnik.reporter.impl :as rptr]
             [manifold.deferred :as d]
             spootnik.reporter.specs))
@@ -80,11 +79,10 @@
 
   ([error extra]
    (log/error error)
-   (-> (capture! (-> (if (instance? Exception error)
-                       (-> {:data (ex-data error)}
-                           (raven/add-exception! error))
-                       {:message error})
-                     (raven/add-extra! extra)))
+   (-> (capture! (if (instance? Exception error)
+                   {:extra extra
+                    :throwable error}
+                   {:message error}))
        (d/catch Throwable
                 (fn [e]
                   (log/error e "Sentry failure")))
