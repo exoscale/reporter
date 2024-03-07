@@ -83,7 +83,8 @@
 
           (d/chain
            (fn [event-id]
-             (error e (str "captured exception as sentry event: " event-id))))
+             (error e (str "captured exception as sentry event: " event-id))
+             event-id))
 
           (d/catch (fn [e']
                      (error e "Failed to capture exception" {:tags tags :capture-exception e'})
