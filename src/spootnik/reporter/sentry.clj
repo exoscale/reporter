@@ -48,29 +48,30 @@
       (or (System/getenv "HOSTNAME")
           (second (swap! cache hostname))))))
 
-(defn- e->sentry-request [e]
-  (let [payload (-> e :extra :payload)]
-    {:url          (-> payload :uri)
-     :method       (-> payload :request-method name clojure.string/upper-case)
-     :query-string (-> payload :query-string)
-     :headers      (-> payload :headers)}))
+(defn- payload->sentry-request [payload]
+  {:url          (-> payload :uri)
+   :method       (-> payload :request-method name clojure.string/upper-case)
+   :query-string (-> payload :query-string)
+   :headers      (-> payload :headers)})
 
 (defn e->sentry-event [e options tags]
-  (let [{:keys [message extra throwable]} e]
+  (let [{:keys [message extra throwable]} e
+        message      (or message (ex-message e))
+        user         (some-> extra :org/uuid str)
+        fingerprints (some-> options :fingerpint seq)
+        request      (some-> extra :payload payload->sentry-request)]
 
-    (if message
-      {:message message}
+    (cond-> {:message message
+             :level :error
+             :platform "java"
+             :server-name  (localhost)}
 
-      {:message      (ex-message e)
-       :request      (e->sentry-request e)
-       :level        :error
-       :platform     "java"
-       :user         {:id (-> e :extra :org/uuid str)}
-       :tags         tags
-       :server-name  (localhost)
-       :fingerprints (some-> options :fingerpint seq)
-       :extra        extra
-       :throwable    throwable})))
+      throwable    (assoc :throwable throwable)
+      extra        (assoc :extra extra)
+      (seq tags)   (assoc :tags tags)
+      user         (assoc :user user)
+      fingerprints (assoc :fingerprints fingerprints)
+      request      (assoc :request request))))
 
 (defn send-event! [dsn options e tags]
   (let [event (e->sentry-event e options tags)]
@@ -79,12 +80,15 @@
             (sentry-io/send-event event)
             (catch Exception e
               (d/error-deferred e)))
+
           (d/chain
            (fn [event-id]
              (error e (str "captured exception as sentry event: " event-id))))
+
           (d/catch (fn [e']
                      (error e "Failed to capture exception" {:tags tags :capture-exception e'})
                      (send-event! dsn options e' tags))))
+
       (swap! http-requests-payload-stub conj event))))
 
 (defn init! [dsn sentry]
