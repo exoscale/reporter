@@ -371,9 +371,11 @@
 (defn parse-pggrouping-keys [grouping-keys]
   (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
 
-;; "sentry" is a configuration map sent to sentry.io on initialisation
-;; https://github.com/getsentry/sentry-clj/tree/master?tab=readme-ov-file#additional-initialisation-options
-(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture? prometheus
+;; Reporter configuration specs:
+;; https://github.com/exoscale/reporter/blob/master/src/spootnik/reporter/specs.clj
+
+(defrecord Reporter [rclient raven-options reporters registry sentry
+                     metrics riemann prevent-capture? prometheus
                      started? pushgateway]
   c/Lifecycle
   (start [this]

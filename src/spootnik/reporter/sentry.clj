@@ -54,7 +54,13 @@
    :query-string (-> payload :query-string)
    :headers      (-> payload :headers)})
 
-(defn e->sentry-event [e options tags]
+(defn e->sentry-event
+  "
+  Supported event keys:
+  https://github.com/getsentry/sentry-clj/tree/master?tab=readme-ov-file#supported-event-keys
+  "
+
+  [e options tags]
   (let [{:keys [message extra throwable]} e
         message      (or message (ex-message e))
         user         (some-> extra :org/uuid str)
@@ -92,7 +98,13 @@
 
       (swap! http-requests-payload-stub conj event))))
 
-(defn init! [{:keys [dsn] :as sentry}]
+(defn init!
+  "
+  Additional options can be found here:
+  https://github.com/getsentry/sentry-clj/tree/master?tab=readme-ov-file#additional-initialisation-options
+  "
+
+  [{:keys [dsn] :as sentry}]
   (if-not (in-memory? dsn)
     (sentry-io/init! dsn sentry)
     (reset! http-requests-payload-stub [])))
