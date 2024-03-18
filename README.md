@@ -21,9 +21,14 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 1.0.0
+
+- Migrating from `exoscale/raven` to `io.sentry/sentry-clj`
+- `raven-options` renamed to `sentry-options` within `spootnik.reporter.impl/Reporter` signature
+
 #### 0.2.0
 
-- Allow arbitray values for counter 
+- Allow arbitray values for counter
 
 #### 0.1.60
 

@@ -374,7 +374,7 @@
 ;; Reporter configuration specs:
 ;; https://github.com/exoscale/reporter/blob/master/src/spootnik/reporter/specs.clj
 
-(defrecord Reporter [rclient raven-options reporters registry sentry
+(defrecord Reporter [rclient sentry-options reporters registry sentry
                      metrics riemann prevent-capture? prometheus
                      started? pushgateway]
   c/Lifecycle
@@ -389,7 +389,7 @@
             pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
             rclient              (when riemann (riemann-client riemann))
             [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
-            options              (when sentry (or raven-options {}))
+            options              (when sentry (or sentry-options {}))
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)
                                          opts (cond-> {:port (:port prometheus)}
@@ -410,12 +410,12 @@
 
         (when-not prevent-capture?
           (with-uncaught e
-            (capture! (assoc this :raven-options options) e)))
+            (capture! (assoc this :sentry-options options) e)))
         (cond-> (assoc this
                        :registry      reg
                        :reporters     reps
                        :rclient       rclient
-                       :raven-options options
+                       :sentry-options options
                        :started? true)
           prometheus (assoc :prometheus {:server   prometheus-server
                                          :registry prometheus-registry})
@@ -444,7 +444,7 @@
       (rs/close! sentry))
 
     (assoc this
-           :raven-options nil
+           :sentry-options nil
            :reporters nil
            :registry nil
            :rclient nil
@@ -523,7 +523,7 @@
   (capture! [this e]
     (capture! this e {}))
   (capture! [_this e tags]
-    (rs/send-event! (:dsn sentry) raven-options e tags))
+    (rs/send-event! (:dsn sentry) sentry-options e tags))
   RiemannSink
   (send! [_this ev]
     (when rclient
