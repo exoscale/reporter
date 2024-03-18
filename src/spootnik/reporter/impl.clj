@@ -1,9 +1,7 @@
 (ns spootnik.reporter.impl
   (:require [aleph.http                 :as http]
-            [manifold.deferred         :as d]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as c]
-            [raven.client               :as raven]
             [metrics.reporters.console  :as console]
             [metrics.reporters.jmx      :as jmx]
             [metrics.reporters.graphite :as graphite]
@@ -19,7 +17,8 @@
             [camel-snake-kebab.core     :as csk]
             [clojure.string             :as str]
             [clojure.tools.logging      :refer [info error]]
-            [spootnik.uncaught          :refer [with-uncaught]])
+            [spootnik.uncaught          :refer [with-uncaught]]
+            [spootnik.reporter.sentry   :as rs])
   (:import com.aphyr.riemann.client.RiemannClient
            com.aphyr.riemann.client.RiemannBatchClient
            com.aphyr.riemann.client.TcpTransport
@@ -209,7 +208,7 @@
         state (or (:state ev) (:state defaults))
         time  ^Long (or time (quot (System/currentTimeMillis) 1000))]
     (-> (.event client)
-        (.host (or host (:host defaults) (raven/localhost)))
+        (.host (or host (:host defaults) (rs/localhost)))
         (.service (or service (:service defaults) "<none>"))
         (.time (long time))
         (cond-> metric      (.metric metric)
@@ -372,16 +371,17 @@
 (defn parse-pggrouping-keys [grouping-keys]
   (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
 
-;; "sentry" is a sentry map like {:dsn "..."}
-;; "raven-options" is the options map sent to raven http client
-;; http://aleph.io/codox/aleph/aleph.http.html#var-request
-(defrecord Reporter [rclient raven-options reporters registry sentry metrics riemann prevent-capture? prometheus
+;; Reporter configuration specs:
+;; https://github.com/exoscale/reporter/blob/master/src/spootnik/reporter/specs.clj
+
+(defrecord Reporter [rclient sentry-options reporters registry sentry
+                     metrics riemann prevent-capture? prometheus
                      started? pushgateway]
   c/Lifecycle
   (start [this]
     (if started?
       this
-      (let [prometheus-registry         (CollectorRegistry/defaultRegistry)
+      (let [prometheus-registry  (CollectorRegistry/defaultRegistry)
             [pgclient pgjob pgregistry pggrouping-keys] (when pushgateway [(build-pushgateway-client pushgateway)
                                                                            (name (:job pushgateway))
                                                                            (CollectorRegistry.)
@@ -389,7 +389,7 @@
             pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
             rclient              (when riemann (riemann-client riemann))
             [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
-            options              (when sentry (or raven-options {}))
+            options              (when sentry (or sentry-options {}))
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)
                                          opts (cond-> {:port (:port prometheus)}
@@ -405,14 +405,17 @@
                                                prometheus
                                                prometheus-registry)
                                       opts)))]
+
+        (rs/init! sentry)
+
         (when-not prevent-capture?
           (with-uncaught e
-            (capture! (assoc this :raven-options options) e)))
+            (capture! (assoc this :sentry-options options) e)))
         (cond-> (assoc this
                        :registry      reg
                        :reporters     reps
                        :rclient       rclient
-                       :raven-options options
+                       :sentry-options options
                        :started? true)
           prometheus (assoc :prometheus {:server   prometheus-server
                                          :registry prometheus-registry})
@@ -436,9 +439,12 @@
           (.close ^RiemannClient rclient)
           (catch Exception _)))
       (when prometheus
-        (.close ^java.io.Closeable (:server prometheus))))
+        (.close ^java.io.Closeable (:server prometheus)))
+
+      (rs/close! sentry))
+
     (assoc this
-           :raven-options nil
+           :sentry-options nil
            :reporters nil
            :registry nil
            :rclient nil
@@ -516,21 +522,10 @@
   SentrySink
   (capture! [this e]
     (capture! this e {}))
-  (capture! [this e tags]
-    (if (:dsn sentry)
-      (-> (try
-            (raven/capture! raven-options (:dsn sentry) e tags)
-            (catch Exception e
-              (d/error-deferred e)))
-          (d/chain
-           (fn [event-id]
-             (error e (str "captured exception as sentry event: " event-id))))
-          (d/catch (fn [e']
-                     (error e "Failed to capture exception" {:tags tags :capture-exception e'})
-                     (capture! this e'))))
-      (error e)))
+  (capture! [_this e tags]
+    (rs/send-event! (:dsn sentry) sentry-options e tags))
   RiemannSink
-  (send! [this ev]
+  (send! [_this ev]
     (when rclient
       (let [to-seq #(if-not (sequential? %) [%] %)]
         (->> ev

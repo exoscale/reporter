@@ -7,7 +7,7 @@
             [prometheus.core :as prometheus]
             [spootnik.reporter.impl :refer :all]
             [com.stuartsierra.component :as component]
-            [raven.client :refer [http-requests-payload-stub]]
+            [spootnik.reporter.sentry :refer [http-requests-payload-stub]]
             [clojure.set :as cljset])
   (:import io.prometheus.client.CollectorRegistry
            io.netty.handler.ssl.SslContextBuilder
