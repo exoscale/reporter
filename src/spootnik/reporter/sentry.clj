@@ -82,7 +82,6 @@
       request           (assoc :request request))))
 
 (defn send-event! [{:keys [dsn] :as sentry} legacy-options e tags]
-  ;; sentry-options are legacy
   (let [event (e->sentry-event e (merge legacy-options sentry) tags)]
     (if-not (in-memory? dsn)
       (-> (try
