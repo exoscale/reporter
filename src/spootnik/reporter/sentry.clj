@@ -1,7 +1,6 @@
 (ns spootnik.reporter.sentry
   (:require
     [sentry-clj.core :as sentry]
-    [sentry-clj.core :as sentry-io]
     [manifold.deferred :as d]
     [clojure.string :as str]
     [clojure.tools.logging :refer [error]]
@@ -85,7 +84,7 @@
   (let [event (e->sentry-event e (merge legacy-options sentry) tags)]
     (if-not (in-memory? dsn)
       (-> (try
-            (sentry-io/send-event event)
+            (sentry/send-event event)
             (catch Exception e
               (d/error-deferred e)))
 
