@@ -29,6 +29,7 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 #### 1.0.0
 
 - Migrating from `exoscale/raven` to `io.sentry/sentry-clj`
+  - `SENTRY_` env vars are no longer automatically forwarded 
 - `raven-options` renamed to `sentry-options` within `spootnik.reporter.impl/Reporter` signature
 
 #### 0.2.0
