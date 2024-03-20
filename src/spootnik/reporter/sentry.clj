@@ -106,10 +106,10 @@
   "
   [{:keys [dsn] :as sentry}]
   (if-not (in-memory? dsn)
-    (sentry-io/init! dsn sentry)
+    (sentry/init! dsn sentry)
     (reset! http-requests-payload-stub [])))
 
 (defn close! [{:keys [dsn]}]
   (if-not (in-memory? dsn)
-    (sentry-io/close!)
+    (sentry/close!)
     (reset! http-requests-payload-stub nil)))
