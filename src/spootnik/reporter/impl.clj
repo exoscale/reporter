@@ -523,7 +523,7 @@
   (capture! [this e]
     (capture! this e {}))
   (capture! [_this e tags]
-    (rs/send-event! (:dsn sentry) sentry-options e tags))
+    (rs/send-event! sentry sentry-options e tags))
   RiemannSink
   (send! [_this ev]
     (when rclient

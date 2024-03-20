@@ -21,9 +21,15 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 1.0.2
+
+- Reporter's `sentry` config supports the following keys `:dsn, :environment, :release, :tags`
+  - `sentry-options` are deprecated 
+
 #### 1.0.0
 
 - Migrating from `exoscale/raven` to `io.sentry/sentry-clj`
+  - `SENTRY_` env vars are no longer automatically forwarded 
 - `raven-options` renamed to `sentry-options` within `spootnik.reporter.impl/Reporter` signature
 
 #### 0.2.0
