@@ -23,7 +23,6 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 #### 1.0.2
 
-- Migrating from `exoscale/raven` to `io.sentry/sentry-clj`
 - Reporter's `sentry` config supports the following keys `:dsn, :environment, :release, :tags`
   - `sentry-options` are deprecated 
 
