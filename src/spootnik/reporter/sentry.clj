@@ -96,7 +96,7 @@
              event-id))
 
           (d/catch (fn [e']
-                     (error e "Failed to capture exception" {:tags tags :throwble e'})
+                     (error e "Failed to capture exception" {:tags tags :throwable e'})
                      (send-event! sentry legacy-options e' tags))))
 
       (swap! http-requests-payload-stub conj event))))
