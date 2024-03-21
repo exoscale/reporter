@@ -107,9 +107,10 @@
   Additional options can be found here:
   https://github.com/getsentry/sentry-clj/tree/master?tab=readme-ov-file#additional-initialisation-options
   "
-  [{:keys [dsn enable-external-configuration] :or {enable-external-configuration true} :as sentry}]
+  [{:keys [dsn] :as sentry}]
   (if-not (in-memory? dsn)
-    (sentry/init! dsn sentry)
+    (let [defaults {:enable-external-configuration true}]
+      (sentry/init! dsn (merge defaults sentry)))
     (reset! http-requests-payload-stub [])))
 
 (defn close! [{:keys [dsn]}]
