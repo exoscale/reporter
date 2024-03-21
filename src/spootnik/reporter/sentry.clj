@@ -101,12 +101,16 @@
 
 (defn init!
   "
+  Initializes sentry. By default, external configuration is enabled.
+  Environment variables to options are documented here: https://docs.sentry.io/platforms/java/configuration/
+
   Additional options can be found here:
   https://github.com/getsentry/sentry-clj/tree/master?tab=readme-ov-file#additional-initialisation-options
   "
   [{:keys [dsn] :as sentry}]
   (if-not (in-memory? dsn)
-    (sentry/init! dsn sentry)
+    (let [defaults {:enable-external-configuration true}]
+      (sentry/init! dsn (merge defaults sentry)))
     (reset! http-requests-payload-stub [])))
 
 (defn close! [{:keys [dsn]}]
