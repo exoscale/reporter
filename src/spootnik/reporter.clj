@@ -79,13 +79,13 @@
 
   ([error extra]
    (log/error error)
-   (-> (capture! (if (instance? Exception error)
-                   {:extra extra
-                    :throwable error}
-                   {:message error}))
-       (d/catch Throwable
-                (fn [e]
-                  (log/error e "Sentry failure")))
-       (try
-         (catch Throwable e
-           (log/error e "Sentry failure"))))))
+   (let [payload (cond-> {:extra extra}
+                   (instance? Exception error) (assoc :throwable error)
+                   (:message error) (assoc :message (:message error)))]
+     (-> (capture! payload)
+         (d/catch Throwable
+                  (fn [e]
+                    (log/error e "Sentry failure")))
+         (try
+           (catch Throwable e
+             (log/error e "Sentry failure")))))))
