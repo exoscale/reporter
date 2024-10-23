@@ -20,7 +20,7 @@
 (s/def :spootnik.reporter.config/port pos-int?)
 (s/def :spootnik.reporter.config/host string?)
 (s/def :spootnik.reporter.config/protocol string?)
-(s/def :spootnik.reporter.config/tls :spootnik.reporter.config/ssl-cert)
+(s/def :spootnik.reporter.config/tls (s/nilable :spootnik.reporter.config/ssl-cert))
 (s/def :spootnik.reporter.config/endpoint (s/and string? #(str/starts-with? % "/")))
 
 ;; riemann
