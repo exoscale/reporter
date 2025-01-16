@@ -21,6 +21,10 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 1.0.7
+
+- Expose `push-metrics!` in `spootnik.reporter` namespace
+
 #### 1.0.6
 
 - Allow metrics sent via `gauge!` and `counter!` to delay sending to pushgateway
