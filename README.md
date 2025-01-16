@@ -21,6 +21,12 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 1.0.6
+
+- Allow metrics sent via `gauge!` and `counter!` to delay sending to pushgateway
+  - pass `(reporter/gauge!  {... push? false})` 
+  - introduce `push-metrics!` to flush metrics to pushgateway 
+ 
 #### 1.0.2
 
 - Reporter's `sentry` config supports the following keys `:dsn, :environment, :release, :tags`

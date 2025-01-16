@@ -160,12 +160,15 @@
           (condp = type
             :counter
             (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter (cond-> {:name         name
-                                                                                 :label-values label-values}
+                                                                                 :label-values label-values
+                                                                                 :push? false}
                                                                           (not= 0 value) (assoc :value value)))
             :gauge
             (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name name
                                                                        :value value
                                                                        :label-values label-values}))))
+      ;; push remaining metrics
+      (push-metrics! reporter)
 
       (let [pg-metrics (-> @(http/get "http://localhost:9091/metrics")
                            :body
