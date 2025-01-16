@@ -23,7 +23,7 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 #### 1.0.6
 
-- Allow metrics sent via `gauge!` and `counter!` from sending to pushgateway so metrics can be sent at a later time
+- Allow metrics sent via `gauge!` and `counter!` to delay sending to pushgateway
   - pass `(reporter/gauge!  {... push? false})` 
   - introduce `push-metrics!` to flush metrics to pushgateway 
  
