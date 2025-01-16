@@ -41,6 +41,7 @@
 (def capture!    #(apply rptr/capture! reporter %&))
 (def send!       #(apply rptr/send! reporter %&))
 (def gauge!      #(apply rptr/gauge! reporter %&))
+(def push-metrics! #(apply rptr/push-metrics! reporter %&))
 (def counter!    #(apply rptr/counter! reporter %&))
 (def build!      #(apply rptr/build! reporter %&))
 (def inc!        #(apply rptr/inc! reporter %&))
