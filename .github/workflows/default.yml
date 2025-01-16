@@ -10,6 +10,10 @@ jobs:
         - 9091:9091/tcp
     steps:
     - uses: actions/checkout@v2
+    - name: Install clojure tools
+      uses: DeLaGuardo/setup-clojure@13.0
+      with:
+        lein: 2.11.2
     - name: Install dependencies
       run: lein deps
     - name: Run tests
