@@ -62,7 +62,8 @@
 
 (defprotocol PushGatewaySink
   (counter! [this metric])
-  (gauge! [this metric]))
+  (gauge! [this metric])
+  (push-metrics! [this]))
 
 (defprotocol MetricHolder
   (instrument! [this prefix])
@@ -507,17 +508,23 @@
     (when registry
       (tmr/stop ctx)))
   PushGatewaySink
-  (counter! [this {:keys [name] :as metric}]
+  (counter! [this {:keys [name push?] :or {push? true} :as metric}]
     (when pushgateway
       (let [{:keys [client metrics job registry grouping-keys]} pushgateway
             collector (name metrics)]
         (inc-counter! collector metric)
-        (push-pushgateway-metric! client registry job grouping-keys))))
-  (gauge! [this {:keys [name] :as metric}]
+        (when push?
+          (push-pushgateway-metric! client registry job grouping-keys)))))
+  (gauge! [this {:keys [name push?] :or {push? true}  :as metric}]
     (when pushgateway
       (let [{:keys [client metrics job registry grouping-keys]} pushgateway
             collector (name metrics)]
         (set-gauge! collector metric)
+        (when push?
+          (push-pushgateway-metric! client registry job grouping-keys)))))
+  (push-metrics! [this]
+    (when pushgateway
+      (let [{:keys [client job registry grouping-keys]} pushgateway]
         (push-pushgateway-metric! client registry job grouping-keys))))
   SentrySink
   (capture! [this e]
@@ -560,6 +567,7 @@
   PushGatewaySink
   (gauge!   ([this metric]))
   (counter! ([this metric]))
+  (push-metrics! ([this]))
   SentrySink
   (capture! ([this e]) ([this e tags]))
   RiemannSink
