@@ -52,8 +52,10 @@
   (sh
    (format "git tag -a \"%s\" --no-sign -m \"Release %s\"" version version)
    "git pull"
-   "git push --follow-tags"))
+   "git push --follow-tags")
+  opts)
 
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn release
   [opts]
   (-> opts
