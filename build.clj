@@ -5,7 +5,7 @@
             [deps-deploy.deps-deploy :as dd]))
 
 (def lib 'exoscale/reporter)
-(def version (format "1.0.%s" (b/git-count-revs nil)))
+(def version (format "1.0.%s-SNAPSHOT" (b/git-count-revs nil)))
 (def class-dir "target/classes")
 (def copy-srcs ["src"])
 (def target-dir "target")

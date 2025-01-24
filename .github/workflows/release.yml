@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - master
+    - mpenet/t-deps
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
