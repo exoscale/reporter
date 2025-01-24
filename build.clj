@@ -42,14 +42,17 @@
               :repository "clojars"})
   opts)
 
+(defn- sh
+  [& cmds]
+  (doseq [cmd cmds]
+    (p/process {:command-args ["sh" "-c" cmd]})))
+
 (defn tag
   [opts]
-  (p/process {:command-args
-              ["sh" "-c" (format "git tag -a \"%s\" --no-sign -m \"Release %s\""
-                                 version version)]})
-  (p/process {:command-args ["sh" "-c" "git pull"]})
-  (p/process {:command-args ["sh" "-c" "git push --follow-tags"]})
-  opts)
+  (sh
+   (format "git tag -a \"%s\" --no-sign -m \"Release %s\"" version version)
+   "git pull"
+   "git push --follow-tags"))
 
 (defn release
   [opts]
