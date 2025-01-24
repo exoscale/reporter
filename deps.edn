@@ -1,13 +1,39 @@
-{:paths
- ["src"]
+{:paths ["src"]
+
  :deps
- {org.clojure/clojure        "1.9.0"
-  org.clojure/tools.logging  "0.4.0"
-  com.stuartsierra/component "0.3.2"
-  io.sentry/sentry-clj       "7.6.215"
-  spootnik/net               "0.3.3-beta24"
-  spootnik/uncaught          "0.5.3"
-  metrics-clojure            "2.10.0"
-  metrics-clojure-riemann    "2.10.0"
-  metrics-clojure-jvm        "2.10.0"
-  metrics-clojure-graphite   "2.10.0"}}
+ {aleph/aleph {:mvn/version "0.4.7-alpha5"}
+  org.clojure/clojure {:mvn/version "1.10.1"}
+  org.clojure/tools.logging {:mvn/version "1.0.0"}
+  com.stuartsierra/component {:mvn/version "1.0.0"}
+  io.sentry/sentry-clj {:mvn/version "7.6.215"}
+  spootnik/uncaught {:mvn/version "0.5.5"}
+  metrics-clojure/metrics-clojure {:mvn/version "2.10.0"}
+  metrics-clojure-riemann/metrics-clojure-riemann {:mvn/version "2.10.0"}
+  metrics-clojure-jvm/metrics-clojure-jvm {:mvn/version "2.10.0"}
+  metrics-clojure-graphite/metrics-clojure-graphite {:mvn/version "2.10.0"}
+  io.prometheus/simpleclient {:mvn/version "0.12.0"}
+  io.prometheus/simpleclient_common {:mvn/version "0.12.0"}
+  io.prometheus/simpleclient_hotspot {:mvn/version "0.12.0"}
+  io.prometheus/simpleclient_dropwizard {:mvn/version "0.12.0"}
+  io.prometheus/simpleclient_pushgateway {:mvn/version "0.12.0"}
+  camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
+  javax.xml.bind/jaxb-api {:mvn/version "2.4.0-b180830.0359"}}
+
+ :aliases
+ {:build
+  {:deps {io.github.clojure/tools.build {:git/tag "v0.10.6" :git/sha "52cf7d6"}
+          io.github.slipset/deps-deploy {:git/sha "b87c9299761762984bd54a285ca8fa0aac81809f"
+                                         :exclusions [s3-wagon-private/s3-wagon-private]}
+          exoscale/sos-wagon-private {:mvn/version "1.3.2-exoscale11"}}
+
+   :ns-default build}
+
+  :test
+  {:extra-deps {exoscale/test-runner {:local/root "dev"}
+                com.soundcloud/prometheus-clj {:mvn/version "2.4.1"}
+                org.slf4j/slf4j-api {:mvn/version "1.7.26"}
+                org.slf4j/slf4j-log4j12 {:mvn/version "1.7.26"}
+                org.clojure/tools.logging {:mvn/version "0.4.1"}}
+   :jvm-opts ["-Dclojure.main.report=stderr"]
+   :exec-fn test-runner/run
+   :extra-paths ["test" "test/resources"]}}}
