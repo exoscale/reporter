@@ -22,10 +22,7 @@
  :aliases
  {:build
   {:deps {io.github.clojure/tools.build {:git/tag "v0.10.6" :git/sha "52cf7d6"}
-          io.github.slipset/deps-deploy {:git/sha "b87c9299761762984bd54a285ca8fa0aac81809f"
-                                         :exclusions [s3-wagon-private/s3-wagon-private]}
-          exoscale/sos-wagon-private {:mvn/version "1.3.2-exoscale11"}}
-
+          io.github.slipset/deps-deploy {:git/sha "b87c9299761762984bd54a285ca8fa0aac81809f"}}
    :ns-default build}
 
   :test
