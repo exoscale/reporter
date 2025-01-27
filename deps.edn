@@ -16,7 +16,7 @@
   io.prometheus/simpleclient_hotspot {:mvn/version "0.12.0"}
   io.prometheus/simpleclient_dropwizard {:mvn/version "0.12.0"}
   io.prometheus/simpleclient_pushgateway {:mvn/version "0.12.0"}
-  camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
+  camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
   javax.xml.bind/jaxb-api {:mvn/version "2.4.0-b180830.0359"}}
 
  :aliases
