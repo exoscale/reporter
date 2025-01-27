@@ -9,7 +9,7 @@ jobs:
         ports:
         - 9091:9091/tcp
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: Install clojure tools
       uses: DeLaGuardo/setup-clojure@13.0
       with:
