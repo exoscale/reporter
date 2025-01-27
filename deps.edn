@@ -30,7 +30,7 @@
                 com.soundcloud/prometheus-clj {:mvn/version "2.4.1"}
                 org.slf4j/slf4j-api {:mvn/version "1.7.26"}
                 org.slf4j/slf4j-log4j12 {:mvn/version "1.7.26"}
-                org.clojure/tools.logging {:mvn/version "0.4.1"}}
+                org.clojure/tools.logging {:mvn/version "0.6.0"}}
    :jvm-opts ["-Dclojure.main.report=stderr"]
    :exec-fn test-runner/run
    :extra-paths ["test" "test/resources"]}}}
