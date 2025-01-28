@@ -12,3 +12,4 @@ pom.xml.asc
 dev/
 .clj-kondo
 .lsp
+/.cpcache/
