@@ -42,7 +42,7 @@
 
 (defn alert->payload
   [{:as _alert :keys [name labels annotations generator-url delay-after-ms]
-    :or {delay-after-ms (* 60 1000 15)}}]
+    :or {delay-after-ms (* 60 1000 5)}}]
   (let [t (Instant/now)]
     (cond-> {:startsAt (str t)
              :endsAt (str (.plusMillis t (* delay-after-ms)))
