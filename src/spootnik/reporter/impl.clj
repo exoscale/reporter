@@ -1,57 +1,57 @@
 (ns spootnik.reporter.impl
-  (:require [aleph.http                 :as http]
+  (:require [aleph.http :as http]
+            [camel-snake-kebab.core :as csk]
             [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.tools.logging :refer [info error]]
             [com.stuartsierra.component :as c]
-            [metrics.reporters.console  :as console]
-            [metrics.reporters.jmx      :as jmx]
+            [metrics.core :as m]
+            [metrics.counters :as cnt]
+            [metrics.gauges :as gge]
+            [metrics.histograms :as hst]
+            [metrics.jvm.core :as jvm]
+            [metrics.meters :as mtr]
+            [metrics.reporters.console :as console]
             [metrics.reporters.graphite :as graphite]
-            [metrics.reporters.riemann  :as riemann]
-            [spootnik.log-reporter      :as logs]
-            [metrics.jvm.core           :as jvm]
-            [metrics.core               :as m]
-            [metrics.gauges             :as gge]
-            [metrics.counters           :as cnt]
-            [metrics.meters             :as mtr]
-            [metrics.timers             :as tmr]
-            [metrics.histograms         :as hst]
-            [camel-snake-kebab.core     :as csk]
-            [clojure.string             :as str]
-            [clojure.tools.logging      :refer [info error]]
-            [spootnik.uncaught          :refer [with-uncaught]]
-            [spootnik.reporter.sentry   :as rs])
-  (:import com.aphyr.riemann.client.RiemannClient
-           com.aphyr.riemann.client.RiemannBatchClient
-           com.aphyr.riemann.client.TcpTransport
-           com.aphyr.riemann.client.EventDSL
+            [metrics.reporters.jmx :as jmx]
+            [metrics.reporters.riemann :as riemann]
+            [metrics.timers :as tmr]
+            [spootnik.log-reporter :as logs]
+            [spootnik.reporter.sentry :as rs]
+            [spootnik.uncaught :refer [with-uncaught]])
+  (:import com.aphyr.riemann.client.EventDSL
            com.aphyr.riemann.client.IPromise
+           com.aphyr.riemann.client.RiemannBatchClient
+           com.aphyr.riemann.client.RiemannClient
+           com.aphyr.riemann.client.TcpTransport
            com.codahale.metrics.ScheduledReporter
            io.netty.handler.ssl.ClientAuth
+           io.netty.handler.ssl.JdkSslContext
            io.netty.handler.ssl.SslContextBuilder
+           io.prometheus.client.Collector
            io.prometheus.client.CollectorRegistry
+           io.prometheus.client.Counter
+           io.prometheus.client.Counter$Child
+           io.prometheus.client.Gauge
+           io.prometheus.client.Gauge$Child
+           io.prometheus.client.SimpleCollector$Builder
            io.prometheus.client.dropwizard.DropwizardExports
+           io.prometheus.client.exporter.HttpConnectionFactory
+           io.prometheus.client.exporter.PushGateway
            io.prometheus.client.exporter.common.TextFormat
            io.prometheus.client.hotspot.DefaultExports
-           io.prometheus.client.Gauge
-           io.prometheus.client.Counter
-           io.prometheus.client.Gauge$Child
-           io.prometheus.client.Counter$Child
-           io.prometheus.client.SimpleCollector$Builder
-           io.prometheus.client.Collector
-           io.prometheus.client.exporter.PushGateway
-           io.prometheus.client.exporter.HttpConnectionFactory
            java.io.File
            java.io.FileInputStream
            java.io.InputStream
            java.io.StringWriter
-           java.util.concurrent.TimeUnit
-           java.util.List
-           java.util.Map
            java.net.InetSocketAddress
            java.net.URL
-           java.security.cert.X509Certificate
            java.security.cert.CertificateFactory
+           java.security.cert.X509Certificate
+           java.util.List
+           java.util.Map
+           java.util.concurrent.TimeUnit
            javax.net.ssl.HttpsURLConnection
-           io.netty.handler.ssl.JdkSslContext
            javax.net.ssl.SSLContext))
 
 (defprotocol RiemannSink
@@ -132,14 +132,14 @@
     (reify
       c/Lifecycle
       (start [this] (jmx/start r) this)
-      (stop [this]  (jmx/stop r) this))))
+      (stop [this] (jmx/stop r) this))))
 
 (defn build-graphite-metrics-reporter [reg {:keys [opts interval]}]
   (let [r (graphite/reporter reg opts)]
     (reify
       c/Lifecycle
       (start [this] (graphite/start r interval) this)
-      (stop [this]  (graphite/stop r) this))))
+      (stop [this] (graphite/stop r) this))))
 
 (defn build-riemann-metrics-reporter [reg rclient {:keys [opts interval]}]
   (if-not rclient
@@ -177,11 +177,11 @@
 
 (defn build-metrics-reporter [reg rclient ^CollectorRegistry prometheus-registry ^CollectorRegistry pushgateway-registry [type opt]]
   (condp = type
-    :console  (build-console-metrics-reporter reg opt)
-    :logs     (build-logs-metrics-reporter reg opt)
-    :jmx      (build-jmx-metrics-reporter  reg opt)
+    :console (build-console-metrics-reporter reg opt)
+    :logs (build-logs-metrics-reporter reg opt)
+    :jmx (build-jmx-metrics-reporter reg opt)
     :graphite (build-graphite-metrics-reporter reg opt)
-    :riemann  (build-riemann-metrics-reporter reg rclient opt)
+    :riemann (build-riemann-metrics-reporter reg rclient opt)
     :prometheus (build-prometheus-metrics-reporter reg prometheus-registry)
     :pushgateway (build-pushgateway-metrics-reporter pushgateway-registry)
     :else (throw (ex-info "Cannot build requested metrics reporter" type))))
@@ -203,20 +203,20 @@
       (error e "cannot create riemann client"))))
 
 (defn ->event [^RiemannClient client defaults {:keys [host service time ^Double metric description] :as ev}]
-  (let [tags  (some-> (concat (:tags defaults) (:tags ev)) set seq)
+  (let [tags (some-> (concat (:tags defaults) (:tags ev)) set seq)
         attrs (merge (:attrs defaults) (:attrs ev))
-        ttl   (when-let [t (or (:ttl ev) (:ttl defaults))] (float t))
+        ttl (when-let [t (or (:ttl ev) (:ttl defaults))] (float t))
         state (or (:state ev) (:state defaults))
-        time  ^Long (or time (quot (System/currentTimeMillis) 1000))]
+        time ^Long (or time (quot (System/currentTimeMillis) 1000))]
     (-> (.event client)
         (.host (or host (:host defaults) (rs/localhost)))
         (.service (or service (:service defaults) "<none>"))
         (.time (long time))
-        (cond-> metric      (.metric metric)
-                state       (.state ^String state)
+        (cond-> metric (.metric metric)
+                state (.state ^String state)
                 (seq attrs) (.attributes ^Map attrs)
-                (seq tags)  (.tags ^List tags)
-                ttl         (.ttl (float ttl))
+                (seq tags) (.tags ^List tags)
+                ttl (.ttl (float ttl))
                 description (.description ^String description))
         ^EventDSL
         (.build))))
@@ -226,13 +226,13 @@
     (.sendEvent client (first events))
     (.sendEvents client ^List events)))
 
-(defn riemann-events!
-  [client defaults events]
-  (let [deref' #(.deref ^IPromise % 100 TimeUnit/MILLISECONDS)]
-    (->> events
-         (map #(->event client defaults %))
-         (riemann-send client)
-         (deref'))))
+(def ^:dynamic riemann-events!
+  (fn [client defaults events]
+    (let [deref' #(.deref ^IPromise % 100 TimeUnit/MILLISECONDS)]
+      (->> events
+           (map #(->event client defaults %))
+           (riemann-send client)
+           (deref')))))
 
 (defn build-metrics-reporters
   [reg reporters rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
@@ -241,7 +241,7 @@
 
 (defn build-metrics
   [{:keys [reporters]} rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
-  (let [reg  (m/new-registry)
+  (let [reg (m/new-registry)
         reps (build-metrics-reporters reg reporters rclient prometheus-registry pushgateway-registry)]
     (doseq [r reps]
       (c/start r))
@@ -281,8 +281,8 @@
    build a `trustManager` for an `SslContext`"
   [files]
   (let [->file #(if (string? %) (io/file %) %)
-        dir    (io/file "/etc/ssl/certs")
-        fact   (CertificateFactory/getInstance "X509")]
+        dir (io/file "/etc/ssl/certs")
+        fact (CertificateFactory/getInstance "X509")]
     (->> dir
          (.listFiles)
          (seq)
@@ -305,7 +305,7 @@
   ^JdkSslContext
   [{:keys [pkey cert ca-cert authorities]}]
   (let [authorities (or authorities [ca-cert])
-        ca-certs    (read-ca-certs authorities)]
+        ca-certs (read-ca-certs authorities)]
     (-> (SslContextBuilder/forClient)
         (.trustManager ca-certs)
         (.keyManager (io/file cert) (io/file pkey))
@@ -317,7 +317,7 @@
     (reify HttpConnectionFactory
       (create [this url]
         (doto ^HttpsURLConnection (.openConnection (URL. url))
-          (.setSSLSocketFactory  (.getSocketFactory ^SSLContext (.context ssl-context))))))))
+          (.setSSLSocketFactory (.getSocketFactory ^SSLContext (.context ssl-context))))))))
 
 (defn collector-builder-of
   ^SimpleCollector$Builder [type]
@@ -326,7 +326,7 @@
     :counter (Counter/build)))
 
 (defn build-pushgateway-collector
-  ^SimpleCollector$Builder [{:keys [name type  help  label-names]}]
+  ^SimpleCollector$Builder [{:keys [name type help label-names]}]
   (-> (collector-builder-of type)
       (.name (csk/->snake_case_string name))
       (.help help)
@@ -382,30 +382,30 @@
   (start [this]
     (if started?
       this
-      (let [prometheus-registry  (CollectorRegistry/defaultRegistry)
+      (let [prometheus-registry (CollectorRegistry/defaultRegistry)
             [pgclient pgjob pgregistry pggrouping-keys] (when pushgateway [(build-pushgateway-client pushgateway)
                                                                            (name (:job pushgateway))
                                                                            (CollectorRegistry.)
                                                                            (parse-pggrouping-keys (:grouping-keys pushgateway))])
-            pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
-            rclient              (when riemann (riemann-client riemann))
-            [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
-            options              (when sentry (or sentry-options {}))
-            prometheus-server    (when prometheus
-                                   (let [tls (:tls prometheus)
-                                         opts (cond-> {:port (:port prometheus)}
-                                                (some? (:tls prometheus))
-                                                (assoc :ssl-context (server-ssl-context tls))
-                                                (:host prometheus)
-                                                (assoc :socket-address
-                                                       (InetSocketAddress.
-                                                        ^String (:host prometheus)
-                                                        ^int (:port prometheus))))]
-                                     (http/start-server
-                                      (partial prometheus-handler
-                                               prometheus
-                                               prometheus-registry)
-                                      opts)))]
+            pgmetrics (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
+            rclient (when riemann (riemann-client riemann))
+            [reg reps] (build-metrics metrics rclient prometheus-registry pgregistry)
+            options (when sentry (or sentry-options {}))
+            prometheus-server (when prometheus
+                                (let [tls (:tls prometheus)
+                                      opts (cond-> {:port (:port prometheus)}
+                                             (some? (:tls prometheus))
+                                             (assoc :ssl-context (server-ssl-context tls))
+                                             (:host prometheus)
+                                             (assoc :socket-address
+                                                    (InetSocketAddress.
+                                                     ^String (:host prometheus)
+                                                     ^int (:port prometheus))))]
+                                  (http/start-server
+                                   (partial prometheus-handler
+                                            prometheus
+                                            prometheus-registry)
+                                   opts)))]
 
         (rs/init! sentry)
 
@@ -413,12 +413,12 @@
           (with-uncaught e
             (capture! (assoc this :sentry-options options) e)))
         (cond-> (assoc this
-                       :registry      reg
-                       :reporters     reps
-                       :rclient       rclient
+                       :registry reg
+                       :reporters reps
+                       :rclient rclient
                        :sentry-options options
                        :started? true)
-          prometheus (assoc :prometheus {:server   prometheus-server
+          prometheus (assoc :prometheus {:server prometheus-server
                                          :registry prometheus-registry})
           pushgateway (assoc :pushgateway {:client pgclient
                                            :registry pgregistry
@@ -471,10 +471,10 @@
   (build! [this type alias]
     (when registry
       (case type
-        :counter   (cnt/counter registry (->alias alias))
-        :meter     (mtr/meter registry (->alias alias))
+        :counter (cnt/counter registry (->alias alias))
+        :meter (mtr/meter registry (->alias alias))
         :histogram (hst/histogram registry (->alias alias))
-        :timer     (tmr/timer registry (->alias alias))
+        :timer (tmr/timer registry (->alias alias))
         (throw (ex-info "invalid metric type" {})))))
   (inc! [this alias]
     (when registry
@@ -515,7 +515,7 @@
         (inc-counter! collector metric)
         (when push?
           (push-pushgateway-metric! client registry job grouping-keys)))))
-  (gauge! [this {:keys [name push?] :or {push? true}  :as metric}]
+  (gauge! [this {:keys [name push?] :or {push? true} :as metric}]
     (when pushgateway
       (let [{:keys [client metrics job registry grouping-keys]} pushgateway
             collector (name metrics)]
@@ -565,7 +565,7 @@
   (start! [this alias])
   (stop! [this ctx])
   PushGatewaySink
-  (gauge!   ([this metric]))
+  (gauge! ([this metric]))
   (counter! ([this metric]))
   (push-metrics! ([this]))
   SentrySink
