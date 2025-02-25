@@ -1,7 +1,7 @@
 {:paths ["src"]
 
  :deps
- {aleph/aleph {:mvn/version "0.4.7-alpha5"}
+ {aleph/aleph {:mvn/version "0.8.3"}
   org.clojure/clojure {:mvn/version "1.12.0"}
   org.clojure/tools.logging {:mvn/version "1.3.0"}
   com.stuartsierra/component {:mvn/version "1.1.0"}
