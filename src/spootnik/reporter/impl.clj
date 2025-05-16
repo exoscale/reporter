@@ -52,7 +52,12 @@
            java.security.cert.CertificateFactory
            javax.net.ssl.HttpsURLConnection
            io.netty.handler.ssl.JdkSslContext
-           javax.net.ssl.SSLContext))
+           javax.net.ssl.SSLContext
+           [io.opentelemetry.api GlobalOpenTelemetry]
+           [io.opentelemetry.exporter.otlp.metrics OtlpGrpcMetricExporter]
+           [io.opentelemetry.sdk OpenTelemetrySdk]
+           [io.opentelemetry.sdk.metrics SdkMeterProvider]
+           [io.opentelemetry.sdk.metrics.export PeriodicMetricReader]))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -175,7 +180,16 @@
       (info "Clearing pushgateway registry")
       (.clear registry))))
 
-(defn build-metrics-reporter [reg rclient ^CollectorRegistry prometheus-registry ^CollectorRegistry pushgateway-registry [type opt]]
+(defn build-otel-metrics-reporter [reg otel {:keys [opts]}]
+  (reify
+    c/Lifecycle
+    (start [this]
+      (info "Starting otel reporter")
+      this)
+    (stop [this]
+      (info "Clearing otel registry"))))
+
+(defn build-metrics-reporter [reg rclient otel ^CollectorRegistry prometheus-registry ^CollectorRegistry pushgateway-registry [type opt]]
   (condp = type
     :console  (build-console-metrics-reporter reg opt)
     :logs     (build-logs-metrics-reporter reg opt)
@@ -184,6 +198,7 @@
     :riemann  (build-riemann-metrics-reporter reg rclient opt)
     :prometheus (build-prometheus-metrics-reporter reg prometheus-registry)
     :pushgateway (build-pushgateway-metrics-reporter pushgateway-registry)
+    :otel (build-otel-metrics-reporter reg otel opt)
     :else (throw (ex-info "Cannot build requested metrics reporter" type))))
 
 (defn riemann-client
@@ -235,14 +250,14 @@
          (deref'))))
 
 (defn build-metrics-reporters
-  [reg reporters rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
+  [reg reporters rclient otel ^CollectorRegistry prometheus-registry pushgateway-registry]
   (info "building metrics reporters")
-  (mapv (partial build-metrics-reporter reg rclient prometheus-registry pushgateway-registry) reporters))
+  (mapv (partial build-metrics-reporter reg rclient otel prometheus-registry pushgateway-registry) reporters))
 
 (defn build-metrics
-  [{:keys [reporters]} rclient ^CollectorRegistry prometheus-registry pushgateway-registry]
+  [{:keys [reporters]} rclient otel ^CollectorRegistry prometheus-registry pushgateway-registry]
   (let [reg  (m/new-registry)
-        reps (build-metrics-reporters reg reporters rclient prometheus-registry pushgateway-registry)]
+        reps (build-metrics-reporters reg reporters rclient otel prometheus-registry pushgateway-registry)]
     (doseq [r reps]
       (c/start r))
     [reg reps]))
@@ -369,15 +384,36 @@
   [^PushGateway pg ^CollectorRegistry registry ^String job ^java.util.Map grouping-keys]
   (.push pg registry job grouping-keys))
 
+(defn flush-otel-metrics! [{:keys [^SdkMeterProvider provider]}]
+  ;; flushes all metric readers
+  (-> (.forceFlush provider)
+      (.join 10 TimeUnit/SECONDS)))
+
+(defn build-otel-components [{:keys [endpoint svc-name svc-version tls]}]
+  (let [exporter (-> (OtlpGrpcMetricExporter/builder)
+                     (.setEndpoint endpoint)
+                     (.setTimeout 2 TimeUnit/SECONDS)
+                     (.build))
+        provider (-> (SdkMeterProvider/builder)
+                     (.registerMetricReader (PeriodicMetricReader/create exporter))
+                     (.build))]
+    (-> (OpenTelemetrySdk/builder)
+        (.setMeterProvider provider)
+        (.buildAndRegisterGlobal))
+    {:exporter exporter
+     :provider provider}))
+
 (defn parse-pggrouping-keys [grouping-keys]
   (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
+
 
 ;; Reporter configuration specs:
 ;; https://github.com/exoscale/reporter/blob/master/src/spootnik/reporter/specs.clj
 
 (defrecord Reporter [rclient sentry-options reporters registry sentry
                      metrics riemann prevent-capture? prometheus
-                     started? pushgateway]
+                     started? pushgateway
+                     otel]
   c/Lifecycle
   (start [this]
     (if started?
@@ -389,7 +425,8 @@
                                                                            (parse-pggrouping-keys (:grouping-keys pushgateway))])
             pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
             rclient              (when riemann (riemann-client riemann))
-            [reg reps]           (build-metrics metrics rclient prometheus-registry pgregistry)
+            otel                 (when otel (build-otel-components))
+            [reg reps]           (build-metrics metrics rclient otel prometheus-registry pgregistry)
             options              (when sentry (or sentry-options {}))
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)
@@ -424,7 +461,8 @@
                                            :registry pgregistry
                                            :grouping-keys pggrouping-keys
                                            :metrics pgmetrics
-                                           :job pgjob})))))
+                                           :job pgjob})
+          otel (assoc :otel otel)))))
   (stop [this]
     (when started?
       (when-not prevent-capture?
@@ -441,6 +479,10 @@
           (catch Exception _)))
       (when prometheus
         (.close ^java.io.Closeable (:server prometheus)))
+      (when otel
+        (let [{:keys [^SdkMeterProvider provider]} otel]
+          (-> (.shutdown provider)
+              (.join 10 TimeUnit/SECONDS))))
 
       (rs/close! sentry))
 
@@ -451,6 +493,7 @@
            :rclient nil
            :prometheus nil
            :pushgateway nil
+           :otel nil
            :started? false))
   MetricHolder
   (instrument! [this prefix]
@@ -525,7 +568,9 @@
   (push-metrics! [this]
     (when pushgateway
       (let [{:keys [client job registry grouping-keys]} pushgateway]
-        (push-pushgateway-metric! client registry job grouping-keys))))
+        (push-pushgateway-metric! client registry job grouping-keys)))
+    (when otel
+      (flush-otel-metrics! otel)))
   SentrySink
   (capture! [this e]
     (capture! this e {}))

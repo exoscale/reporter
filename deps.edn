@@ -13,6 +13,15 @@
   metrics-clojure-riemann/metrics-clojure-riemann {:mvn/version "2.10.0"}
   metrics-clojure-jvm/metrics-clojure-jvm {:mvn/version "2.10.0"}
   metrics-clojure-graphite/metrics-clojure-graphite {:mvn/version "2.10.0"}
+
+  io.opentelemetry/opentelemetry-sdk-metrics {:mvn/version "1.50.0"}
+  io.opentelemetry/opentelemetry-exporter-otlp {:mvn/version "1.50.0"}
+  ;; required to send over grpc
+  io.grpc/grpc-netty-shaded {:mvn/version "1.64.0"}
+  io.grpc/grpc-protobuf {:mvn/version "1.64.0"}
+  io.grpc/grpc-stub {:mvn/version "1.64.0"}
+  com.google.protobuf/protobuf-java {:mvn/version "3.25.0"}
+
   io.prometheus/simpleclient {:mvn/version "0.16.0"}
   io.prometheus/simpleclient_common {:mvn/version "0.16.0"}
   io.prometheus/simpleclient_hotspot {:mvn/version "0.16.0"}

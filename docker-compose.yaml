@@ -1,0 +1,9 @@
+version: '3.5'
+networks:
+  reporter:
+    name: "reporter_${NETWORK_SUFFIX}"
+
+services:
+  pushgateway:
+    image: prom/pushgateway
+    network_mode: host
