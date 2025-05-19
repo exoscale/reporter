@@ -7,3 +7,10 @@ services:
   pushgateway:
     image: prom/pushgateway
     network_mode: host
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel.yml"]
+    volumes:
+      - ./otel.yml:/etc/otel.yml
+    network_mode: host

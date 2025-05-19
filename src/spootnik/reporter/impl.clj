@@ -54,10 +54,14 @@
            io.netty.handler.ssl.JdkSslContext
            javax.net.ssl.SSLContext
            [io.opentelemetry.api GlobalOpenTelemetry]
+           [io.opentelemetry.api.common AttributeKey Attributes]
+           [io.opentelemetry.api.metrics DoubleGauge LongCounter ObservableLongMeasurement]
            [io.opentelemetry.exporter.otlp.metrics OtlpGrpcMetricExporter]
            [io.opentelemetry.sdk OpenTelemetrySdk]
            [io.opentelemetry.sdk.metrics SdkMeterProvider]
-           [io.opentelemetry.sdk.metrics.export PeriodicMetricReader]))
+           [io.opentelemetry.sdk.metrics.export PeriodicMetricReader]
+           [io.opentelemetry.sdk.resources Resource]
+           [java.util.function Consumer]))
 
 (defprotocol RiemannSink
   (send! [this e]))
@@ -367,18 +371,45 @@
                                                  (register-pushgateway-collector registry))])
                 metrics)))
 
-(defn set-gauge!
+;; these can work with Pushgateway Gauge/Counter or open telemetry
+(defmulti set-gauge! "Set the given `gauge` with the opts"
+          (fn [gauge opts]
+            (cond
+              (map? gauge) :otel
+              (instance? io.prometheus.client.SimpleCollector gauge) :prometheus)))
+(defmulti inc-counter! "Increment the given `counter` with the opts"
+          (fn [counter opts]
+            (cond
+              (map? counter) :otel
+              (instance? io.prometheus.client.SimpleCollector counter) :prometheus)))
+
+;; pushgateway
+(defmethod set-gauge! :prometheus
   [^Gauge gauge {:keys [label-values value]}]
   (-> gauge
       ^Gauge$Child (.labels (into-array String (map name label-values)))
       (.set ^double value)))
-
-(defn inc-counter!
-  "Increment the given `counter` with optional increment `value`."
+(defmethod inc-counter! :prometheus
   [^Counter counter {:keys [value label-values] :or {value 1}}]
   (-> counter
       ^Counter$Child (.labels (into-array String (map name label-values)))
       (.inc (double value))))
+
+;; open telemetry
+(defn- ^Attributes arr->attrs [kvs]
+  (let [builder (Attributes/builder)]
+    (doseq [[k v] (partition 2 kvs)]
+      (.put builder ^String (name k) ^String (name v)))
+    (.build builder)))
+
+(defmethod set-gauge! :otel
+  [{:keys [metric label-names grouping-keys]} {:keys [label-values value]}]
+  (.set ^DoubleGauge metric (double value) (arr->attrs (concat (interleave label-names label-values)
+                                                               (mapcat identity grouping-keys)))))
+(defmethod inc-counter! :otel
+  [{:keys [metric label-names grouping-keys]} {:keys [label-values value] :or {value 1}}]
+  (.add ^LongCounter metric (long value) (arr->attrs (concat (interleave label-names label-values)
+                                                             (mapcat identity grouping-keys)))))
 
 (defn push-pushgateway-metric!
   [^PushGateway pg ^CollectorRegistry registry ^String job ^java.util.Map grouping-keys]
@@ -389,23 +420,46 @@
   (-> (.forceFlush provider)
       (.join 10 TimeUnit/SECONDS)))
 
-(defn build-otel-components [{:keys [endpoint svc-name svc-version tls]}]
-  (let [exporter (-> (OtlpGrpcMetricExporter/builder)
+(defn parse-pggrouping-keys [grouping-keys]
+  (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
+
+(defn build-otel-metrics [{:keys [endpoint job grouping-keys]} metrics-def]
+  ;; https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/
+  (let [attrs    (arr->attrs ["service.name" job "service.instance.id" ""])
+        resource (-> (Resource/getDefault)
+                    (.merge (Resource/create attrs)))
+        exporter (-> (OtlpGrpcMetricExporter/builder)
                      (.setEndpoint endpoint)
                      (.setTimeout 2 TimeUnit/SECONDS)
                      (.build))
         provider (-> (SdkMeterProvider/builder)
+                     (.setResource resource)
                      (.registerMetricReader (PeriodicMetricReader/create exporter))
-                     (.build))]
+                     (.build))
+        mbuilder (.build (.meterBuilder provider "exoscale.reporter"))
+        make-fn  (fn [{:keys [name help type label-names]}]
+                   (condp = type
+                     :gauge (-> mbuilder
+                                (.gaugeBuilder (clojure.core/name name))
+                                (.setDescription help)
+                                (.build))
+                     :counter (-> mbuilder
+                                  (.counterBuilder (clojure.core/name name))
+                                  (.setDescription help)
+                                  (.build))))
+        metrics  (reduce (fn [acc m]
+                           (assoc acc (:name m) {:metric (make-fn m)
+                                                 :label-names (:label-names m)
+                                                 :grouping-keys (parse-pggrouping-keys grouping-keys)}))
+                         {}
+                         metrics-def)]
     (-> (OpenTelemetrySdk/builder)
         (.setMeterProvider provider)
         (.buildAndRegisterGlobal))
+
     {:exporter exporter
-     :provider provider}))
-
-(defn parse-pggrouping-keys [grouping-keys]
-  (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
-
+     :provider provider
+     :metrics metrics}))
 
 ;; Reporter configuration specs:
 ;; https://github.com/exoscale/reporter/blob/master/src/spootnik/reporter/specs.clj
@@ -425,7 +479,7 @@
                                                                            (parse-pggrouping-keys (:grouping-keys pushgateway))])
             pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
             rclient              (when riemann (riemann-client riemann))
-            otel                 (when otel (build-otel-components))
+            otel                 (when otel (build-otel-metrics otel (get-in metrics [:reporters :otel])))
             [reg reps]           (build-metrics metrics rclient otel prometheus-registry pgregistry)
             options              (when sentry (or sentry-options {}))
             prometheus-server    (when prometheus
@@ -557,14 +611,27 @@
             collector (name metrics)]
         (inc-counter! collector metric)
         (when push?
-          (push-pushgateway-metric! client registry job grouping-keys)))))
+          (push-pushgateway-metric! client registry job grouping-keys))))
+    (when otel
+      (let [{:keys [^SdkMeterProvider provider metrics]} otel
+            impl (name metrics)]
+        (inc-counter! impl metric)
+        (when push?
+          (flush-otel-metrics! otel)))))
+
   (gauge! [this {:keys [name push?] :or {push? true}  :as metric}]
     (when pushgateway
       (let [{:keys [client metrics job registry grouping-keys]} pushgateway
             collector (name metrics)]
         (set-gauge! collector metric)
         (when push?
-          (push-pushgateway-metric! client registry job grouping-keys)))))
+          (push-pushgateway-metric! client registry job grouping-keys))))
+    (when otel
+      (let [{:keys [^SdkMeterProvider provider metrics]} otel
+            impl (name metrics)]
+        (set-gauge! impl metric)
+        (when push?
+          (flush-otel-metrics! otel)))))
   (push-metrics! [this]
     (when pushgateway
       (let [{:keys [client job registry grouping-keys]} pushgateway]
