@@ -160,7 +160,20 @@
                            [:gauge :foo-gauge ["taba" "zar"] 3]
                            [:gauge :foo-gauge-b ["taba" "tec"] 4]
                            [:gauge :foo-gauge ["taba" "tec"] 5]
-                           [:counter :foo_counter ["taba" "tec"] 3]]]
+                           [:counter :foo_counter ["taba" "tec"] 3]]
+
+          expected   #{"foo_counter_total{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"
+                       "foo_counter_total{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
+                       "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
+                       "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
+                       "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"}
+
+          get-metrics (fn [url]
+                        (-> @(http/get url)
+                            :body
+                            bs/to-string
+                            clojure.string/split-lines
+                            set))]
 
       (doseq [metric metrics-to-push]
         (let [[type name label-values value] metric]
@@ -179,33 +192,12 @@
       (Thread/sleep 500)
 
       (testing "pushgateway metrics"
-        (let [pg-metrics (-> @(http/get "http://localhost:9091/metrics")
-                             :body
-                             bs/to-string
-                             clojure.string/split-lines
-                             set)
-              expected   #{"foo_counter_total{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"
-                           "foo_counter_total{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
-                           "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
-                           "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
-                           "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"}]
+        (let [pg-metrics (get-metrics "http://localhost:9091/metrics")]
           (is (cljset/subset? expected pg-metrics))))
 
       (testing "otel-collector metrics"
         ;; metrics have to go to otel first
-        (let [otel-metrics (-> @(http/get "http://localhost:9092/metrics")
-                               :body
-                               bs/to-string
-                               clojure.string/split-lines
-                               set)
-              expected   #{"foo_counter_total{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"
-                           "foo_counter_total{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
-                           "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
-                           "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
-                           "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"}]
-
+        (let [otel-metrics (get-metrics "http://localhost:9092/metrics")]
           (is (cljset/subset? expected otel-metrics))))
 
       (component/stop reporter))))
-
-;(metrics-send-events)
