@@ -16,13 +16,15 @@ jobs:
         cli: 1.10.1.693
 
     - name: Setup docker compose
-      uses: hoverkraft-tech/compose-action@v2.2.0
+      uses: hoverkraft-tech/compose-action@v2.0.1
       with:
-        compose-file: |
-          docker-compose.yaml
-        up-flags: "--no-build -d --pull=missing --quiet-pull"
-        down-flags: "--volumes"
-        compose-version: "2.36.0"
+        compose-file: "./docker-compose.yaml"
+        services: |
+          pushgateway
+          otel-collector
+
+    - name: Check services
+      run: docker compose ps
 
     - name: Run tests
       run: clojure -X:test

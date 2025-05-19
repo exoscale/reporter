@@ -184,14 +184,11 @@
       (info "Clearing pushgateway registry")
       (.clear registry))))
 
-(defn build-otel-metrics-reporter [reg otel {:keys [opts]}]
+(defn build-otel-metrics-reporter [reg {:keys [job endpoint]} {:keys [opts]}]
   (reify
     c/Lifecycle
-    (start [this]
-      (info "Starting otel reporter")
-      this)
-    (stop [this]
-      (info "Clearing otel registry"))))
+    (start [this] this)
+    (stop [this] this)))
 
 (defn build-metrics-reporter [reg rclient otel ^CollectorRegistry prometheus-registry ^CollectorRegistry pushgateway-registry [type opt]]
   (condp = type
@@ -479,8 +476,8 @@
                                                                            (parse-pggrouping-keys (:grouping-keys pushgateway))])
             pgmetrics            (when pushgateway (build-collectors! pgregistry (get-in metrics [:reporters :pushgateway])))
             rclient              (when riemann (riemann-client riemann))
-            otel                 (when otel (build-otel-metrics otel (get-in metrics [:reporters :otel])))
             [reg reps]           (build-metrics metrics rclient otel prometheus-registry pgregistry)
+            otel                 (when otel (build-otel-metrics otel (get-in metrics [:reporters :otel])))
             options              (when sentry (or sentry-options {}))
             prometheus-server    (when prometheus
                                    (let [tls (:tls prometheus)

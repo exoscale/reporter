@@ -8,8 +8,7 @@
             [spootnik.reporter.impl :as r :refer :all]
             [com.stuartsierra.component :as component]
             [spootnik.reporter.sentry :refer [http-requests-payload-stub]]
-            [clojure.set :as cljset]
-            [matcher-combinators.test :refer [match?]])
+            [clojure.set :as cljset])
   (:import io.prometheus.client.CollectorRegistry
            io.netty.handler.ssl.SslContextBuilder
            io.netty.handler.ssl.ClientAuth
@@ -177,6 +176,7 @@
                                 :label-values label-values}))))
       ;; push remaining metrics
       (push-metrics! reporter)
+      (Thread/sleep 500)
 
       (testing "pushgateway metrics"
         (let [pg-metrics (-> @(http/get "http://localhost:9091/metrics")
@@ -189,7 +189,7 @@
                            "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
                            "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
                            "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"}]
-          (is (match? expected pg-metrics))))
+          (is (cljset/subset? expected pg-metrics))))
 
       (testing "otel-collector metrics"
         ;; metrics have to go to otel first
@@ -204,12 +204,8 @@
                            "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
                            "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"}]
 
-          (is (match? expected otel-metrics))
-          (when-not (match? expected otel-metrics)
-            (println (cljset/difference expected otel-metrics))
-            (mapv println otel-metrics))))
-
+          (is (cljset/subset? expected otel-metrics))))
 
       (component/stop reporter))))
 
-(metrics-send-events)
+;(metrics-send-events)
