@@ -66,14 +66,17 @@
         fingerprints (some-> fingerprint seq)
         request      (some-> extra :payload payload->sentry-request)
         ;; override "base" tags with params
-        merged-tags  (merge (:tags options) tags)]
+        merged-tags  (merge (:tags options) tags)
+        ;; by always setting an exception we should get exception with causes
+        exception   (or throwable
+                        (when (instance? Throwable e) e))]
 
     (cond-> {:message message
              :level :error
              :platform "java"
              :server-name  (localhost)}
 
-      throwable         (assoc :throwable throwable)
+      exception         (assoc :throwable exception)
       extra             (assoc :extra extra)
       (seq merged-tags) (assoc :tags merged-tags)
       user              (assoc :user user)
