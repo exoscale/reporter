@@ -21,6 +21,11 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 1.0.218
+
+- Use `deps.edn` for build
+- Sentry exceptions are now sent as the `throwable` field
+
 #### 1.0.7
 
 - Expose `push-metrics!` in `spootnik.reporter` namespace
