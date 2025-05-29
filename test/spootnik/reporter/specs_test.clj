@@ -10,6 +10,10 @@
                  :job :foo
                  :port 9091
                  :grouping-keys {:cache "hit"}}
+
+   :otel        {:endpoint      "http://localhost:4317"
+                 :job           :testing
+                 :grouping-keys {:cluster "testing-cluster"}}
    :riemann {:host     "riemann.svc"
              :port     5554
              :protocol "tls"

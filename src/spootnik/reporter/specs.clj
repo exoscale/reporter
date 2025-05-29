@@ -22,6 +22,7 @@
 (s/def :spootnik.reporter.config/protocol string?)
 (s/def :spootnik.reporter.config/tls (s/nilable :spootnik.reporter.config/ssl-cert))
 (s/def :spootnik.reporter.config/endpoint (s/and string? #(str/starts-with? % "/")))
+(s/def :spootnik.reporter.config.otel/endpoint (s/and string? #(str/starts-with? % "http")))
 
 ;; riemann
 (s/def :spootnik.reporter.config.riemann/batch pos-int?)
@@ -54,6 +55,12 @@
                                                                           :spootnik.reporter.config.pushgateway/grouping-keys
                                                                           :spootnik.reporter.config/port]))
 
+;; otel
+(s/def :spootnik.reporter.config.metrics/otel (s/coll-of  :spootnik.reporter.config.pushgateway/metric))
+(s/def :spootnik.reporter.config.otel/otel (s/keys :req-un [:spootnik.reporter.config.otel/endpoint
+                                                            :spootnik.reporter.config.pushgateway/job]
+                                                   :opt-un [:spootnik.reporter.config.pushgateway/grouping-keys]))
+
 ;; generic metrics reporter
 (s/def :spootnik.reporter.config.metrics.reporter.config/opts map?)
 (s/def :spootnik.reporter.config.metrics.reporter.config/interval pos-int?)
@@ -75,7 +82,8 @@
                    :spootnik.reporter.config.metrics/riemann
                    :spootnik.reporter.config.metrics/console
                    :spootnik.reporter.config.metrics/jmx
-                   :spootnik.reporter.config.metrics/pushgateway]))
+                   :spootnik.reporter.config.metrics/pushgateway
+                   :spootnik.reporter.config.metrics/otel]))
 (s/def :spootnik.reporter.config/metrics
   (s/keys :req-un [:spootnik.reporter.config.metrics/reporters]))
 
@@ -99,4 +107,5 @@
                    :spootnik.reporter.config/metrics
                    :spootnik.reporter.config/riemann
                    :spootnik.reporter.config/prometheus
-                   :spootnik.reporter.config.pushgateway/pushgateway]))
+                   :spootnik.reporter.config.pushgateway/pushgateway
+                   :spootnik.reporter.config.otel/otel]))

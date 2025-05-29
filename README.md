@@ -21,10 +21,20 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 1.0.220
+
+- Allow pushing metrics to open telemetry via an additional `reporter` (similar to : 
+```clojure
+:otel {:endpoint      "http://localhost:4317"
+       :job           "testing"
+       :grouping-keys {:cluster "testing-cluster"}}
+```
+
 #### 1.0.218
 
 - Use `deps.edn` for build
 - Sentry exceptions are now sent as the `throwable` field
+
 
 #### 1.0.7
 
