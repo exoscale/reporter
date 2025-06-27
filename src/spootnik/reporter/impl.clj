@@ -53,7 +53,7 @@
            javax.net.ssl.HttpsURLConnection
            io.netty.handler.ssl.JdkSslContext
            javax.net.ssl.SSLContext
-           [io.opentelemetry.api GlobalOpenTelemetry]
+           [io.opentelemetry.api GlobalOpenTelemetry OpenTelemetry]
            [io.opentelemetry.api.common AttributeKey Attributes]
            [io.opentelemetry.api.metrics DoubleGauge LongCounter ObservableLongMeasurement]
            [io.opentelemetry.exporter.otlp.metrics OtlpGrpcMetricExporter]
@@ -420,19 +420,22 @@
 (defn parse-pggrouping-keys [grouping-keys]
   (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
 
-(defn build-otel-metrics [{:keys [endpoint job grouping-keys]} metrics-def]
+(defn build-otel-metrics [{:keys [endpoint job grouping-keys initialize-sdk?]} metrics-def]
   ;; https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/
-  (let [attrs    (arr->attrs ["service.name" job "service.instance.id" ""])
-        resource (-> (Resource/getDefault)
-                    (.merge (Resource/create attrs)))
-        exporter (-> (OtlpGrpcMetricExporter/builder)
-                     (.setEndpoint endpoint)
-                     (.setTimeout 2 TimeUnit/SECONDS)
-                     (.build))
-        provider (-> (SdkMeterProvider/builder)
-                     (.setResource resource)
-                     (.registerMetricReader (PeriodicMetricReader/create exporter))
-                     (.build))
+  (let [provider (if initialize-sdk?
+                   (let [attrs    (arr->attrs ["service.name" job "service.instance.id" ""])
+                         resource (-> (Resource/getDefault)
+                                      (.merge (Resource/create attrs)))
+                         exporter (-> (OtlpGrpcMetricExporter/builder)
+                                      (.setEndpoint endpoint)
+                                      (.setTimeout 2 TimeUnit/SECONDS)
+                                      (.build))]
+                     (-> (SdkMeterProvider/builder)
+                         (.setResource resource)
+                         (.registerMetricReader (PeriodicMetricReader/create exporter))
+                         (.build)))
+                   ;; else
+                   (.getMeterProvider (GlobalOpenTelemetry/get)))
         mbuilder (.build (.meterBuilder provider "exoscale.reporter"))
         make-fn  (fn [{:keys [name help type label-names]}]
                    (condp = type
@@ -453,9 +456,7 @@
     (-> (OpenTelemetrySdk/builder)
         (.setMeterProvider provider)
         (.buildAndRegisterGlobal))
-
-    {:exporter exporter
-     :provider provider
+    {:provider provider
      :metrics metrics}))
 
 ;; Reporter configuration specs:

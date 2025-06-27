@@ -52,6 +52,14 @@
               :repository "clojars"})
   opts)
 
+(defn install [{:keys [lib version jar-file]}]
+  (jar {})
+  (b/install {:basis @basis
+              :class-dir class-dir
+              :lib lib
+              :version version
+              :jar-file jar-file}))
+
 (defn- sh
   [& cmds]
   (doseq [cmd cmds]

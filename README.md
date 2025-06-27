@@ -23,11 +23,15 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 #### 1.0.220
 
-- Allow pushing metrics to open telemetry via an additional `reporter` (similar to : 
+- Allow pushing metrics to open telemetry via an additional `reporter` (similar to `pushgateway`)
+  - if OpenTelemetry SDK is already initialized, `initialize-sdk?` should be `false`
+  - if OpenTelemetry SDK was not initialized, an exception may occur: `java.lang.ClassCastException: io.opentelemetry.api.metrics.DefaultMeterProvider cannot be cast to io.opentelemetry.sdk.metrics.SdkMeterProvider`
+
 ```clojure
-:otel {:endpoint      "http://localhost:4317"
-       :job           "testing"
-       :grouping-keys {:cluster "testing-cluster"}}
+:otel {:endpoint        "http://localhost:4317"
+       :job             "testing"
+       :grouping-keys   {:cluster "testing-cluster"}
+       :initialize-sdk? true}
 ```
 
 #### 1.0.218
