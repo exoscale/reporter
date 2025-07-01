@@ -406,11 +406,11 @@
                     (cond
                       (= "job" (name k))
                       (do
-                        (log/warn "'instance' cannot be an attribute label, it is derived from OTEL 'service.name' ")
+                        (log/warn "'job' attribute for OTEL metric will be dropped, it is derived from OTEL 'service.name' ")
                         m)
                       (= "instance" (name k))
                       (do
-                        (log/warn "'instance' cannot be an attribute label, it is derived from OTEL 'service.instance.id' ")
+                        (log/warn "'instance' for OTEL metric will be dropped, it is derived from OTEL 'service.instance.id' ")
                         m)
                       :else (assoc m k v))) {})
        (apply concat)
