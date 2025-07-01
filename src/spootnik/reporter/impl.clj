@@ -1,24 +1,25 @@
 (ns spootnik.reporter.impl
-  (:require [aleph.http                 :as http]
+  (:require [aleph.http :as http]
             [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [com.stuartsierra.component :as c]
-            [metrics.reporters.console  :as console]
-            [metrics.reporters.jmx      :as jmx]
+            [metrics.reporters.console :as console]
+            [metrics.reporters.jmx :as jmx]
             [metrics.reporters.graphite :as graphite]
-            [metrics.reporters.riemann  :as riemann]
-            [spootnik.log-reporter      :as logs]
-            [metrics.jvm.core           :as jvm]
-            [metrics.core               :as m]
-            [metrics.gauges             :as gge]
-            [metrics.counters           :as cnt]
-            [metrics.meters             :as mtr]
-            [metrics.timers             :as tmr]
-            [metrics.histograms         :as hst]
-            [camel-snake-kebab.core     :as csk]
-            [clojure.string             :as str]
-            [clojure.tools.logging      :refer [info error]]
-            [spootnik.uncaught          :refer [with-uncaught]]
-            [spootnik.reporter.sentry   :as rs])
+            [metrics.reporters.riemann :as riemann]
+            [spootnik.log-reporter :as logs]
+            [metrics.jvm.core :as jvm]
+            [metrics.core :as m]
+            [metrics.gauges :as gge]
+            [metrics.counters :as cnt]
+            [metrics.meters :as mtr]
+            [metrics.timers :as tmr]
+            [metrics.histograms :as hst]
+            [camel-snake-kebab.core :as csk]
+            [clojure.string :as str]
+            [clojure.tools.logging :refer [info error]]
+            [spootnik.uncaught :refer [with-uncaught]]
+            [spootnik.reporter.sentry :as rs])
   (:import com.aphyr.riemann.client.RiemannClient
            com.aphyr.riemann.client.RiemannBatchClient
            com.aphyr.riemann.client.TcpTransport
@@ -59,6 +60,7 @@
            [io.opentelemetry.exporter.otlp.metrics OtlpGrpcMetricExporter]
            [io.opentelemetry.sdk OpenTelemetrySdk]
            [io.opentelemetry.sdk.metrics SdkMeterProvider]
+           [io.opentelemetry.api.metrics MeterProvider]
            [io.opentelemetry.sdk.metrics.export PeriodicMetricReader]
            [io.opentelemetry.sdk.resources Resource]
            [java.util.function Consumer]))
@@ -393,17 +395,34 @@
       (.inc (double value))))
 
 ;; open telemetry
-(defn- ^Attributes arr->attrs [kvs]
+(defn- ^Attributes arr->raw-attrs [kvs-arr]
   (let [builder (Attributes/builder)]
-    (doseq [[k v] (partition 2 kvs)]
+    (doseq [[k v] (partition 2 kvs-arr)]
       (.put builder ^String (name k) ^String (name v)))
     (.build builder)))
+(defn- ^Attributes arr->attrs [kvs-arr]
+  (->> (apply hash-map kvs-arr)
+       (reduce-kv (fn [m k v]
+                    (cond
+                      (= "job" (name k))
+                      (do
+                        (log/warn "'instance' cannot be an attribute label, it is derived from OTEL 'service.name' ")
+                        m)
+                      (= "instance" (name k))
+                      (do
+                        (log/warn "'instance' cannot be an attribute label, it is derived from OTEL 'service.instance.id' ")
+                        m)
+                      :else (assoc m k v))) {})
+       (apply concat)
+       (arr->raw-attrs)))
 
 (defmethod set-gauge! :otel
   [{:keys [metric label-names grouping-keys]} {:keys [label-values value]}]
+  ;; TODO ignore :instance
   (.set ^DoubleGauge metric (double value) (arr->attrs (concat (interleave label-names label-values)
                                                                (mapcat identity grouping-keys)))))
 (defmethod inc-counter! :otel
+  ;; TODO ignore :instance
   [{:keys [metric label-names grouping-keys]} {:keys [label-values value] :or {value 1}}]
   (.add ^LongCounter metric (long value) (arr->attrs (concat (interleave label-names label-values)
                                                              (mapcat identity grouping-keys)))))
@@ -412,18 +431,22 @@
   [^PushGateway pg ^CollectorRegistry registry ^String job ^java.util.Map grouping-keys]
   (.push pg registry job grouping-keys))
 
-(defn flush-otel-metrics! [{:keys [^SdkMeterProvider provider]}]
+(defn flush-otel-metrics! [{:keys [^MeterProvider provider]}]
   ;; flushes all metric readers
-  (-> (.forceFlush provider)
-      (.join 10 TimeUnit/SECONDS)))
+  ;; if we initialized the sdk, then we can flush
+  ;; otherwise we dont control it
+  (if (instance? SdkMeterProvider provider)
+    (-> (.forceFlush ^SdkMeterProvider provider)
+        (.join 10 TimeUnit/SECONDS))
+    (log/warnf "Cannot flush metrics: provider is not of class SdkMeterProvider: %s" (class provider))))
 
 (defn parse-pggrouping-keys [grouping-keys]
   (into {} (for [[k v] grouping-keys] [(csk/->snake_case_string k) v])))
 
-(defn build-otel-metrics [{:keys [endpoint job grouping-keys initialize-sdk?]} metrics-def]
+(defn build-otel-metrics [{:keys [endpoint job instance grouping-keys initialize-sdk?]} metrics-def]
   ;; https://opentelemetry.io/docs/specs/otel/compatibility/prometheus_and_openmetrics/
   (let [provider (if initialize-sdk?
-                   (let [attrs    (arr->attrs ["service.name" job "service.instance.id" ""])
+                   (let [attrs    (arr->raw-attrs ["service.name" job "service.instance.id" instance])
                          resource (-> (Resource/getDefault)
                                       (.merge (Resource/create attrs)))
                          exporter (-> (OtlpGrpcMetricExporter/builder)
@@ -453,9 +476,10 @@
                                                  :grouping-keys (parse-pggrouping-keys grouping-keys)}))
                          {}
                          metrics-def)]
-    (-> (OpenTelemetrySdk/builder)
-        (.setMeterProvider provider)
-        (.buildAndRegisterGlobal))
+    (when initialize-sdk?
+      (-> (OpenTelemetrySdk/builder)
+          (.setMeterProvider provider)
+          (.buildAndRegisterGlobal)))
     {:provider provider
      :metrics metrics}))
 
@@ -532,9 +556,11 @@
       (when prometheus
         (.close ^java.io.Closeable (:server prometheus)))
       (when otel
-        (let [{:keys [^SdkMeterProvider provider]} otel]
-          (-> (.shutdown provider)
-              (.join 10 TimeUnit/SECONDS))))
+        (let [{:keys [^MeterProvider provider]} otel]
+          (if (instance? SdkMeterProvider provider)
+            (-> (.shutdown ^SdkMeterProvider provider)
+                (.join 10 TimeUnit/SECONDS))
+            (log/warnf "Shutdown not available: provider is not of class SdkMeterProvider: %s" (class provider)))))
 
       (rs/close! sentry))
 
@@ -611,7 +637,7 @@
         (when push?
           (push-pushgateway-metric! client registry job grouping-keys))))
     (when otel
-      (let [{:keys [^SdkMeterProvider provider metrics]} otel
+      (let [{:keys [^MeterProvider provider metrics]} otel
             impl (name metrics)]
         (inc-counter! impl metric)
         (when push?
@@ -625,7 +651,7 @@
         (when push?
           (push-pushgateway-metric! client registry job grouping-keys))))
     (when otel
-      (let [{:keys [^SdkMeterProvider provider metrics]} otel
+      (let [{:keys [^MeterProvider provider metrics]} otel
             impl (name metrics)]
         (set-gauge! impl metric)
         (when push?

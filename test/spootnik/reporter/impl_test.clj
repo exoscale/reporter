@@ -149,7 +149,8 @@
                                                                                      :otel        metrics}}
                                                            :otel        {:endpoint      "http://localhost:4317"
                                                                          :job           "testing"
-                                                                         :grouping-keys {:cluster "testing-cluster"}}
+                                                                         :grouping-keys {:cluster "testing-cluster"}
+                                                                         :initialize-sdk? true}
                                                            :pushgateway {:host          "localhost"
                                                                          :job           "testing"
                                                                          :grouping-keys {:cluster "testing-cluster"}

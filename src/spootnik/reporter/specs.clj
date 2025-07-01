@@ -23,6 +23,7 @@
 (s/def :spootnik.reporter.config/tls (s/nilable :spootnik.reporter.config/ssl-cert))
 (s/def :spootnik.reporter.config/endpoint (s/and string? #(str/starts-with? % "/")))
 (s/def :spootnik.reporter.config.otel/endpoint (s/and string? #(str/starts-with? % "http")))
+(s/def :spootnik.reporter.config.otel/initialize-sdk? boolean?)
 
 ;; riemann
 (s/def :spootnik.reporter.config.riemann/batch pos-int?)
@@ -38,6 +39,7 @@
 
 ;; pushgateway
 (s/def :spootnik.reporter.config.pushgateway/job keyword?)
+(s/def :spootnik.reporter.config.pushgateway/instance string?)
 (s/def :spootnik.reporter.config.pushgateway/name keyword?)
 (s/def :spootnik.reporter.config.pushgateway/type #{:gauge :counter})
 (s/def :spootnik.reporter.config.pushgateway/help string?)
@@ -57,9 +59,13 @@
 
 ;; otel
 (s/def :spootnik.reporter.config.metrics/otel (s/coll-of  :spootnik.reporter.config.pushgateway/metric))
-(s/def :spootnik.reporter.config.otel/otel (s/keys :req-un [:spootnik.reporter.config.otel/endpoint
-                                                            :spootnik.reporter.config.pushgateway/job]
-                                                   :opt-un [:spootnik.reporter.config.pushgateway/grouping-keys]))
+(s/def :spootnik.reporter.config.otel/otel (s/keys :req-un [:spootnik.reporter.config.otel/endpoint]
+                                                   :opt-un [:spootnik.reporter.config.pushgateway/grouping-keys
+                                                            :spootnik.reporter.config.pushgateway/job
+                                                            :spootnik.reporter.config.pushgateway/instance
+                                                            :spootnik.reporter.config.otel/initialize-sdk?]))
+
+
 
 ;; generic metrics reporter
 (s/def :spootnik.reporter.config.metrics.reporter.config/opts map?)
