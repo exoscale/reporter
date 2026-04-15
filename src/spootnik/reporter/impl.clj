@@ -338,10 +338,11 @@
   (.register collector registry))
 
 (defn build-pushgateway-client
-  [{:keys [host port tls]
-    :or {port 9091}}]
+  [{:keys [host port tls path-prefix]
+    :or {port 9091
+         path-prefix ""}}]
   (let [protocol (if tls "https" "http")
-        url (URL. protocol host port "")
+        url (URL. protocol host port path-prefix)
         client (PushGateway. url)]
     (when tls
       (.setConnectionFactory client (https-connection-factory tls)))

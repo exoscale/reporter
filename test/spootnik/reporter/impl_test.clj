@@ -3,15 +3,14 @@
             [byte-streams :as bs]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing]]
             [prometheus.core :as prometheus]
-            [spootnik.reporter.impl :refer :all]
+            [spootnik.reporter.impl :refer [map->Reporter prometheus-str-metrics push-metrics! time!]]
             [com.stuartsierra.component :as component]
             [spootnik.reporter.sentry :refer [http-requests-payload-stub]]
             [clojure.set :as cljset])
   (:import io.prometheus.client.CollectorRegistry
            io.netty.handler.ssl.SslContextBuilder
-           io.netty.handler.ssl.ClientAuth
            java.lang.String))
 
 (deftest timers-do-not-modify-the-world

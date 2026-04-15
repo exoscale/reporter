@@ -1,13 +1,15 @@
 (ns spootnik.reporter.specs-test
-  (:require [clojure.test :refer :all]
-            [clojure.spec.alpha :as s]
-            [spootnik.reporter.specs]))
+  (:require
+   [clojure.spec.alpha :as s]
+   [clojure.test :refer [deftest is testing]]
+   [spootnik.reporter.specs]))
 
 (def valid-reporter-config
   {:sentry {:dsn "https://dummy:dsn@errors.sentry-host.com/31337"}
    :prometheus {:port 8007}
    :pushgateway {:host "localhost"
                  :job :foo
+                 :path-prefix "/path/prefix"
                  :port 9091
                  :grouping-keys {:cache "hit"}}
    :riemann {:host     "riemann.svc"
@@ -45,4 +47,7 @@
     (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:riemann :host] nil)))))
 
   (testing "PushGateway host should not be empty"
-    (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:pushgateway :host] nil))))))
+    (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:pushgateway :host] nil)))))
+
+  (testing "PushGateway path-prefix should not be empty"
+    (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:pushgateway :path-prefix] nil))))))
