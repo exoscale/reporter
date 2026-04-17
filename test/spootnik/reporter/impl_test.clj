@@ -183,7 +183,7 @@
 
       (component/stop reporter)))
 
-  (testing "Sending events to pushgateway with prefix"
+  (testing "Sending events to pushgateway with a path-prefix"
     (let [reporter (component/start (map->Reporter {:metrics {:reporters {:pushgateway  [{:name
                                                                                           :foo_counter
                                                                                           :help "A Counter"
