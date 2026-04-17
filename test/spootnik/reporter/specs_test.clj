@@ -50,4 +50,7 @@
     (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:pushgateway :host] nil)))))
 
   (testing "PushGateway path-prefix should not be empty"
-    (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:pushgateway :path-prefix] nil))))))
+    (is (some? (s/explain-data :spootnik.reporter/config (assoc-in valid-reporter-config [:pushgateway :path-prefix] nil)))))
+
+  (testing "PushGateway path-prefix is optional"
+    (is (not (s/explain-data :spootnik.reporter/config (update-in valid-reporter-config [:pushgateway] dissoc :path-prefix))))))
