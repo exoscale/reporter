@@ -21,6 +21,7 @@
 (s/def :spootnik.reporter.config/host string?)
 (s/def :spootnik.reporter.config/protocol string?)
 (s/def :spootnik.reporter.config/tls (s/nilable :spootnik.reporter.config/ssl-cert))
+(s/def :spootnik.reporter.config/path-prefix (s/and string? #(str/starts-with? % "/")))
 (s/def :spootnik.reporter.config/endpoint (s/and string? #(str/starts-with? % "/")))
 
 ;; riemann
@@ -52,7 +53,8 @@
                                                                           :spootnik.reporter.config.pushgateway/job]
                                                                  :opt-un [:spootnik.reporter.config/tls
                                                                           :spootnik.reporter.config.pushgateway/grouping-keys
-                                                                          :spootnik.reporter.config/port]))
+                                                                          :spootnik.reporter.config/port
+                                                                          :spootnik.reporter.config/path-prefix]))
 
 ;; generic metrics reporter
 (s/def :spootnik.reporter.config.metrics.reporter.config/opts map?)

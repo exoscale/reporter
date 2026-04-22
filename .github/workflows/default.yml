@@ -8,6 +8,11 @@ jobs:
         image: prom/pushgateway
         ports:
         - 9091:9091/tcp
+      pushgateway-with-path-prefix:
+        image: prom/pushgateway
+        ports:
+          - 19091:9091/tcp
+        command: --web.external-url "/path/prefix"
     steps:
     - uses: actions/checkout@v6
     - name: Install clojure tools

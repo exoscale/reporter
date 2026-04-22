@@ -3,15 +3,14 @@
             [byte-streams :as bs]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.test :refer :all]
+            [clojure.test :refer [deftest is testing]]
             [prometheus.core :as prometheus]
-            [spootnik.reporter.impl :refer :all]
+            [spootnik.reporter.impl :refer [map->Reporter prometheus-str-metrics push-metrics! time!]]
             [com.stuartsierra.component :as component]
             [spootnik.reporter.sentry :refer [http-requests-payload-stub]]
             [clojure.set :as cljset])
   (:import io.prometheus.client.CollectorRegistry
            io.netty.handler.ssl.SslContextBuilder
-           io.netty.handler.ssl.ClientAuth
            java.lang.String))
 
 (deftest timers-do-not-modify-the-world
@@ -171,6 +170,64 @@
       (push-metrics! reporter)
 
       (let [pg-metrics (-> @(http/get "http://localhost:9091/metrics")
+                           :body
+                           bs/to-string
+                           clojure.string/split-lines
+                           set)
+            expected   #{"foo_counter_total{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"
+                         "foo_counter_total{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 1"
+                         "foo_gauge{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 5"
+                         "foo_gauge{bar=\"taba\",baz=\"zar\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 3"
+                         "foo_gauge_b{bar=\"taba\",baz=\"tec\",cluster=\"testing-cluster\",instance=\"\",job=\"testing\"} 4"}]
+        (is (true? (cljset/subset? expected pg-metrics))))
+
+      (component/stop reporter)))
+
+  (testing "Sending events to pushgateway with a path-prefix"
+    (let [reporter (component/start (map->Reporter {:metrics {:reporters {:pushgateway  [{:name
+                                                                                          :foo_counter
+                                                                                          :help "A Counter"
+                                                                                          :type :counter
+                                                                                          :label-names [:bar :baz]}
+                                                                                         {:name
+                                                                                          :foo-gauge
+                                                                                          :help "A Gauge"
+                                                                                          :type :gauge
+                                                                                          :label-names [:bar :baz]}
+                                                                                         {:name
+                                                                                          :foo-gauge-b
+                                                                                          :help "YAG"
+                                                                                          :type :gauge
+                                                                                          :label-names [:bar :baz]}]}}
+                                                    :pushgateway {:host "localhost"
+                                                                  :path-prefix "/path/prefix"
+                                                                  :job "testing"
+                                                                  :grouping-keys {:cluster "testing-cluster"}
+                                                                  :port 19091}}))
+          metrics-to-push [[:counter :foo_counter  ["taba" "tec"] 0]
+                           [:counter :foo_counter  ["taba" "zar"] 0]
+                           [:gauge   :foo-gauge    ["taba" "tec"] 2]
+                           [:gauge   :foo-gauge    ["taba" "zar"] 3]
+                           [:gauge   :foo-gauge-b  ["taba" "tec"] 4]
+                           [:gauge   :foo-gauge    ["taba" "tec"] 5]
+                           [:counter :foo_counter  ["taba" "tec"] 3]]]
+
+      (doseq [metric metrics-to-push]
+        (let [[type name label-values value] metric]
+          (condp = type
+            :counter
+            (.counter! ^spootnik.reporter.impl.PushGatewaySink reporter (cond-> {:name name
+                                                                                 :label-values label-values
+                                                                                 :push? false}
+                                                                          (not= 0 value) (assoc :value value)))
+            :gauge
+            (.gauge! ^spootnik.reporter.impl.PushGatewaySink reporter {:name name
+                                                                       :value value
+                                                                       :label-values label-values}))))
+      ;; push remaining metrics
+      (push-metrics! reporter)
+
+      (let [pg-metrics (-> @(http/get "http://localhost:19091/path/prefix/metrics")
                            :body
                            bs/to-string
                            clojure.string/split-lines
