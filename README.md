@@ -21,6 +21,10 @@ Reporter provides a [component](https://github.com/stuartsierra/component) in or
 
 ### Changelog
 
+#### 1.0.226
+
+- Pushgateway: allow arbitrary path-prefix to be set #101
+
 #### 1.0.218
 
 - Use `deps.edn` for build
