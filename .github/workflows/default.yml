@@ -14,7 +14,7 @@ jobs:
           - 19091:9091/tcp
         command: --web.external-url "/path/prefix"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Install clojure tools
       uses: DeLaGuardo/setup-clojure@13.5
       with:
